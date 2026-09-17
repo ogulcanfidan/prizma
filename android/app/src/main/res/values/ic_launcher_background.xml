@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- ROUND 16 — kullanıcı isteği: oyunun ilk logosu/launcher icon'u
+         (bkz. www/js/logo.js > renderLogo ve www/js/gen_icon.py notu).
+         Eskiden Capacitor'un varsayılan BEYAZ arka planıydı; artık
+         theme.js > UI.bgDeep (#0B0C12) ile birebir eşleşiyor, böylece
+         adaptive icon'un arka planı uygulamanın "Karanlık + Neon Lab"
+         temasıyla tutarlı. -->
+    <color name="ic_launcher_background">#0B0C12</color>
+</resources>

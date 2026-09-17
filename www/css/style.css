@@ -1,0 +1,1063 @@
+/* Prizma — "Karanlık + Neon Lab" ortak görsel dil.
+   Godot scripts/UITheme.gd paletinin birebir CSS karşılığı. */
+
+@import url('https://fonts.googleapis.com/css2?family=Sora:wght@600;700;800&family=Manrope:wght@400;500;600;700&display=swap');
+
+:root {
+  --bg-deep: #0b0c12;
+  --bg-panel: rgba(20, 22, 32, 0.94);
+  --text-primary: #e6f2ff;
+  --text-muted: #94a3bd;
+
+  --accent-cyan: #40ebff;
+  --accent-amber: #ffc240;
+  --accent-magenta: #ff52b8;
+  --accent-violet: #b87aff;
+}
+
+* {
+  box-sizing: border-box;
+  -webkit-tap-highlight-color: transparent;
+}
+
+html,
+body {
+  height: 100%;
+}
+
+body {
+  margin: 0;
+  background: radial-gradient(120% 100% at 20% 0%, #12162a 0%, var(--bg-deep) 55%);
+  color: var(--text-primary);
+  font-family: "Manrope", system-ui, sans-serif;
+  overflow: hidden;
+  overscroll-behavior: none;
+  user-select: none;
+}
+
+#app {
+  position: fixed;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.screen {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  padding: max(20px, env(safe-area-inset-top)) 20px max(20px, env(safe-area-inset-bottom));
+  animation: screen-in 0.22s ease;
+}
+
+.screen[hidden] {
+  display: none !important;
+}
+
+@keyframes screen-in {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+h1,
+h2,
+h3 {
+  font-family: "Sora", system-ui, sans-serif;
+  margin: 0;
+}
+
+/* --- Neon buton (UITheme.button_style birebir karşılığı) --- */
+.btn {
+  --accent: var(--accent-cyan);
+  appearance: none;
+  border: 2px solid rgba(64, 235, 255, 0.55);
+  border-radius: 14px;
+  background: rgba(23, 26, 37, 0.92);
+  color: var(--text-primary);
+  font-family: "Sora", system-ui, sans-serif;
+  font-weight: 600;
+  font-size: 17px;
+  padding: 14px 22px;
+  /* Eski WebView'lar için düz renk yedeği; color-mix desteklenmiyorsa bu geçerli kalır. */
+  box-shadow: 0 0 10px 0 rgba(64, 235, 255, 0.22);
+  border-color: rgba(64, 235, 255, 0.55);
+  box-shadow: 0 0 10px 0 color-mix(in srgb, var(--accent) 22%, transparent);
+  border-color: color-mix(in srgb, var(--accent) 55%, transparent);
+  transition: box-shadow 0.15s ease, background 0.15s ease, border-color 0.15s ease, transform 0.08s ease;
+  cursor: pointer;
+  touch-action: manipulation;
+}
+
+.btn:active {
+  background: rgba(64, 235, 255, 0.22);
+  border-color: rgba(64, 235, 255, 0.9);
+  box-shadow: 0 0 6px 0 rgba(64, 235, 255, 0.15);
+  background: color-mix(in srgb, var(--accent) 32%, #171a25);
+  border-color: var(--accent);
+  box-shadow: 0 0 6px 0 color-mix(in srgb, var(--accent) 15%, transparent);
+  transform: scale(0.98);
+}
+
+@media (hover: hover) {
+  .btn:hover {
+    background: rgba(64, 235, 255, 0.16);
+    border-color: rgba(64, 235, 255, 0.9);
+    box-shadow: 0 0 16px 0 rgba(64, 235, 255, 0.4);
+    background: color-mix(in srgb, var(--accent) 22%, #171a25);
+    border-color: color-mix(in srgb, var(--accent) 90%, transparent);
+    box-shadow: 0 0 16px 0 color-mix(in srgb, var(--accent) 40%, transparent);
+  }
+}
+
+.btn.small {
+  font-size: 14px;
+  padding: 9px 16px;
+}
+
+/* --- İkon butonlar: ayarlar dişlisi + grafik geri oku ----------------
+   Eski metin tabanlı "< Geri" butonu yerine, hem #game-back/#diff-back/
+   #settings-back hem de ayarlar dişlisi artık dairesel, sadece ikon içeren
+   nötr butonlar kullanıyor. */
+.btn-icon,
+.btn-back-icon {
+  appearance: none;
+  border: 1.5px solid rgba(255, 255, 255, 0.14);
+  background: rgba(23, 26, 37, 0.85);
+  color: var(--text-primary);
+  border-radius: 999px;
+  width: 40px;
+  height: 40px;
+  padding: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  touch-action: manipulation;
+  transition: background 0.15s ease, border-color 0.15s ease, transform 0.08s ease;
+}
+
+.btn-icon svg,
+.btn-back-icon svg {
+  width: 20px;
+  height: 20px;
+}
+
+.btn-icon:active,
+.btn-back-icon:active {
+  transform: scale(0.94);
+  background: rgba(64, 235, 255, 0.18);
+  border-color: rgba(64, 235, 255, 0.55);
+}
+
+@media (hover: hover) {
+  .btn-icon:hover,
+  .btn-back-icon:hover {
+    border-color: rgba(64, 235, 255, 0.55);
+    box-shadow: 0 0 12px 0 rgba(64, 235, 255, 0.28);
+  }
+}
+
+.btn-icon.corner-tl {
+  position: absolute;
+  top: max(20px, env(safe-area-inset-top));
+  left: 20px;
+  z-index: 2;
+}
+
+/* Ana menüdeki Oyna/Ne kadar iyisin butonlarıyla görsel tutarlılık için
+   #btn-settings'e de aynı cyan vurgusu veriliyor. #btn-settings .btn değil
+   .btn-icon kullandığından (.btn-icon'un genel --accent tabanlı renk sistemi
+   yok, dinlenme durumunda hep nötr gri) bu vurgu burada ayrı bir kuralla
+   uygulanıyor. .btn-icon'u paylaşan geri-ok butonları
+   (#game-back/#diff-back/#settings-back/#stats-back, .btn-back-icon)
+   bilinçli olarak nötr kalıyor, bu kural onları etkilemiyor. */
+#btn-settings {
+  border-color: color-mix(in srgb, var(--accent-cyan) 55%, transparent);
+  box-shadow: 0 0 10px 0 color-mix(in srgb, var(--accent-cyan) 22%, transparent);
+}
+
+.corner-tr {
+  position: absolute;
+  top: max(20px, env(safe-area-inset-top));
+  right: 20px;
+  z-index: 2;
+}
+
+.btn.ghost {
+  background: transparent;
+}
+
+.btn.primary {
+  font-size: 20px;
+  padding: 16px 32px;
+}
+
+/* --- Panel (UITheme.panel_style karşılığı) --- */
+.panel {
+  --accent: var(--accent-cyan);
+  background: var(--bg-panel);
+  border: 2px solid rgba(64, 235, 255, 0.45);
+  border-radius: 18px;
+  box-shadow: 0 0 26px 0 rgba(64, 235, 255, 0.24);
+  border-color: color-mix(in srgb, var(--accent) 45%, transparent);
+  box-shadow: 0 0 26px 0 color-mix(in srgb, var(--accent) 24%, transparent);
+}
+
+/* --- Menü --- */
+#screen-menu {
+  align-items: center;
+  justify-content: center;
+  gap: 18px;
+  text-align: center;
+}
+
+.logo-mark {
+  width: 96px;
+  height: 96px;
+}
+
+.logo-title {
+  font-size: 34px;
+  font-weight: 800;
+  letter-spacing: 0.04em;
+  background: linear-gradient(135deg, #ffffff, var(--accent-cyan));
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+
+.logo-subtitle {
+  color: var(--text-muted);
+  font-size: 14px;
+  margin-top: -8px;
+}
+
+.menu-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  margin-top: 18px;
+  width: min(320px, 80vw);
+}
+
+/* --- Zorluk seçimi --- */
+#screen-difficulty .center {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 14px;
+}
+
+.diff-btn {
+  width: min(360px, 86vw);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 18px;
+}
+
+.diff-btn .count {
+  font-family: "Manrope", sans-serif;
+  font-weight: 500;
+  font-size: 13px;
+  opacity: 0.75;
+}
+
+/* --- Üst bar (ortak) --- */
+.top-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.top-bar .title {
+  font-size: 18px;
+  font-weight: 700;
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+}
+
+/* Sonsuz moddaki üst barda zorluk etiketi, düz arka plansız renkli metin
+   yerine, kendi rengiyle uyumlu ince kenarlıklı ve hafif ışıltılı, sadece
+   kelimeyi saran bir "rozet/chip" olarak gösteriliyor — panel/buton
+   ailesindeki mevcut --accent + color-mix desenine uyumlu (bkz. .panel).
+   Eğitim başlıkları (ör. "Portal") bu rozeti kullanmaz, düz başlık olarak
+   kalır — main.js setGameTitle() bunu moda göre seçer. */
+.difficulty-badge {
+  display: inline-block;
+  font-family: "Manrope", sans-serif;
+  font-size: 12px;
+  font-weight: 800;
+  letter-spacing: 0.09em;
+  padding: 7px 18px;
+  border-radius: 999px;
+  color: var(--accent, var(--accent-cyan));
+  background: color-mix(in srgb, var(--accent, var(--accent-cyan)) 16%, transparent);
+  border: 1.4px solid color-mix(in srgb, var(--accent, var(--accent-cyan)) 45%, transparent);
+  text-shadow: 0 0 10px color-mix(in srgb, var(--accent, var(--accent-cyan)) 45%, transparent);
+}
+
+.top-bar .timer {
+  color: var(--text-muted);
+  font-variant-numeric: tabular-nums;
+  font-size: 14px;
+  min-width: 44px;
+  text-align: right;
+}
+
+.tutorial-text {
+  color: var(--text-muted);
+  font-size: 14px;
+  text-align: center;
+  margin: 10px 0 0;
+  min-height: 1.4em;
+}
+
+/* --- Oyun ekranı --- */
+#screen-game {
+  gap: 0;
+}
+
+.board-center {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 14px 0;
+}
+
+.board-frame {
+  --accent: var(--accent-cyan);
+  position: relative;
+  width: min(92vw, 60vh, 460px);
+  border-radius: 18px;
+  padding: 16px;
+  background: var(--bg-panel);
+  border: 2px solid rgba(64, 235, 255, 0.45);
+  box-shadow: 0 0 26px 0 rgba(64, 235, 255, 0.24);
+  border-color: color-mix(in srgb, var(--accent) 45%, transparent);
+  box-shadow: 0 0 26px 0 color-mix(in srgb, var(--accent) 24%, transparent);
+}
+
+.board-svg {
+  display: block;
+  width: 100%;
+  height: 100%;
+  border-radius: 8px;
+  touch-action: none;
+}
+
+.bottom-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.hint-text {
+  color: var(--text-muted);
+  font-size: 13px;
+  font-variant-numeric: tabular-nums;
+}
+
+.fire-row {
+  margin-top: 10px;
+}
+
+.fire-btn {
+  width: 100%;
+}
+
+.fail-toast {
+  margin-top: 8px;
+  text-align: center;
+  color: var(--accent-magenta);
+  font-size: 13px;
+  font-weight: 600;
+  min-height: 1.2em;
+  animation: screen-in 0.15s ease;
+}
+
+.fail-toast[hidden] {
+  display: none !important;
+}
+
+/* --- Kazanma katmanı --- */
+.win-overlay {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(6, 7, 12, 0.55);
+  backdrop-filter: blur(2px);
+  animation: screen-in 0.2s ease;
+}
+
+.win-overlay[hidden] {
+  display: none !important;
+}
+
+.win-panel {
+  --accent: var(--accent-cyan);
+  padding: 28px 30px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 14px;
+  min-width: 240px;
+}
+
+.win-title {
+  font-size: 24px;
+  font-weight: 700;
+}
+
+.win-time {
+  color: var(--text-muted);
+  font-size: 14px;
+}
+
+/* --- Ayarlar ekranı --- */
+.settings-list {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin-top: 22px;
+  width: min(420px, 100%);
+  align-self: center;
+}
+
+.settings-row {
+  padding: 14px 4px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.settings-row-label {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  font-size: 15px;
+  font-weight: 600;
+}
+
+.settings-row-value {
+  color: var(--text-muted);
+  font-size: 13px;
+  font-variant-numeric: tabular-nums;
+  font-weight: 500;
+}
+
+/* Slider'ın dolu kısmı, ayarlanan seviyeyi görsel olarak belli eder:
+   --fill (main.js → updateSliderFill() tarafından yazılır) kadarı dolu
+   renkli, kalanı sönük gri. */
+.slider {
+  --fill: 60%;
+  -webkit-appearance: none;
+  appearance: none;
+  width: 100%;
+  height: 6px;
+  border-radius: 999px;
+  background: linear-gradient(
+    to right,
+    var(--accent-cyan) 0%,
+    var(--accent-cyan) var(--fill),
+    rgba(255, 255, 255, 0.12) var(--fill),
+    rgba(255, 255, 255, 0.12) 100%
+  );
+  outline: none;
+  touch-action: manipulation;
+}
+
+.slider::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  background: var(--accent-cyan);
+  box-shadow: 0 0 10px 0 rgba(64, 235, 255, 0.55);
+  cursor: pointer;
+  border: none;
+}
+
+.slider::-moz-range-thumb {
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  background: var(--accent-cyan);
+  box-shadow: 0 0 10px 0 rgba(64, 235, 255, 0.55);
+  cursor: pointer;
+  border: none;
+}
+
+/* Dil seçici — native <select>, tema renkleriyle. */
+.lang-select {
+  appearance: none;
+  -webkit-appearance: none;
+  width: 100%;
+  background: var(--bg-panel);
+  color: var(--text-primary);
+  border: 1.5px solid rgba(255, 255, 255, 0.14);
+  border-radius: 10px;
+  padding: 10px 14px;
+  font-family: "Manrope", sans-serif;
+  font-size: 15px;
+  font-weight: 600;
+  background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%2394A3BD' stroke-width='2.4' stroke-linecap='round' stroke-linejoin='round'><path d='M6 9l6 6 6-6'/></svg>");
+  background-repeat: no-repeat;
+  background-position: right 12px center;
+  background-size: 16px;
+}
+
+.lang-select option {
+  background: #14161f;
+  color: var(--text-primary);
+}
+
+.settings-toggle-row {
+  appearance: none;
+  border: none;
+  background: transparent;
+  color: var(--text-primary);
+  font-family: "Manrope", sans-serif;
+  font-size: 15px;
+  font-weight: 600;
+  padding: 14px 4px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  cursor: pointer;
+  touch-action: manipulation;
+}
+
+.toggle {
+  width: 46px;
+  height: 27px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.14);
+  position: relative;
+  flex-shrink: 0;
+  transition: background 0.18s ease;
+}
+
+.toggle.on {
+  background: var(--accent-cyan);
+}
+
+.toggle-knob {
+  position: absolute;
+  top: 3px;
+  left: 3px;
+  width: 21px;
+  height: 21px;
+  border-radius: 50%;
+  background: #ffffff;
+  transition: transform 0.18s ease;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.35);
+}
+
+.toggle.on .toggle-knob {
+  transform: translateX(19px);
+}
+
+.settings-divider {
+  height: 1px;
+  background: rgba(255, 255, 255, 0.1);
+  margin: 10px 4px;
+}
+
+/* --- Günlük bulmaca hakkı rozeti — hem ana menüde (sağ üst köşe, ayarlar
+   dişlisiyle simetrik) hem Zorluk Seç üst barında aynı "cam panel" rozeti
+   kullanılıyor: glow'lu dairesel ikon rozeti + kalın rakam + soluk "/30".
+   Dokununca (hak dolu olsa bile) hak popup'ını açar. */
+.allowance-chip {
+  appearance: none;
+  border: 1.5px solid color-mix(in srgb, var(--accent-amber) 38%, transparent);
+  background: var(--bg-panel);
+  border-radius: 999px;
+  padding: 5px 14px 5px 5px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  cursor: pointer;
+  touch-action: manipulation;
+  box-shadow: 0 0 14px 0 color-mix(in srgb, var(--accent-amber) 20%, transparent);
+  transition: transform 0.08s ease, box-shadow 0.15s ease, border-color 0.15s ease;
+}
+
+.allowance-chip-icon {
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  background: color-mix(in srgb, var(--accent-amber) 24%, transparent);
+  color: var(--accent-amber);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  filter: drop-shadow(0 0 4px color-mix(in srgb, var(--accent-amber) 65%, transparent));
+}
+
+.allowance-chip-icon svg {
+  width: 15px;
+  height: 15px;
+}
+
+.allowance-chip-count {
+  font-family: "Sora", system-ui, sans-serif;
+  font-weight: 800;
+  font-size: 15px;
+  color: var(--text-primary);
+  font-variant-numeric: tabular-nums;
+}
+
+.allowance-chip-count small {
+  font-family: "Manrope", sans-serif;
+  font-weight: 600;
+  font-size: 11px;
+  color: var(--text-muted);
+  margin-left: 1px;
+}
+
+.allowance-chip:active {
+  transform: scale(0.95);
+}
+
+@media (hover: hover) {
+  .allowance-chip:hover {
+    border-color: color-mix(in srgb, var(--accent-amber) 70%, transparent);
+    box-shadow: 0 0 18px 0 color-mix(in srgb, var(--accent-amber) 35%, transparent);
+  }
+}
+
+/* --- Sıralama rozeti: #btn-leaderboard, geri okuyla aynı nötr
+   .btn-back-icon stili yerine .allowance-chip ile aynı "cam panel rozeti"
+   deseninde (glow'lu dairesel ikon + metin, daha büyük dokunma alanı), ama
+   kendi rengiyle: mor --accent-violet (cyan Oyna/Ayarlar'da, amber hak
+   rozetinde kullanıldığından, sıralama üçüncü ve ayrı bir vurgu rengiyle
+   net şekilde ayrışıyor). */
+.leaderboard-chip {
+  appearance: none;
+  border: 1.5px solid color-mix(in srgb, var(--accent-violet) 42%, transparent);
+  background: var(--bg-panel);
+  border-radius: 999px;
+  padding: 6px 16px 6px 6px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  cursor: pointer;
+  touch-action: manipulation;
+  box-shadow: 0 0 14px 0 color-mix(in srgb, var(--accent-violet) 24%, transparent);
+  transition: transform 0.08s ease, box-shadow 0.15s ease, border-color 0.15s ease;
+}
+
+.leaderboard-chip-icon {
+  width: 26px;
+  height: 26px;
+  border-radius: 50%;
+  background: color-mix(in srgb, var(--accent-violet) 24%, transparent);
+  color: var(--accent-violet);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  filter: drop-shadow(0 0 4px color-mix(in srgb, var(--accent-violet) 65%, transparent));
+}
+
+.leaderboard-chip-icon svg {
+  width: 15px;
+  height: 15px;
+}
+
+.leaderboard-chip-text {
+  font-family: "Manrope", sans-serif;
+  font-weight: 700;
+  font-size: 13px;
+  letter-spacing: 0.01em;
+  color: var(--accent-violet);
+  white-space: nowrap;
+}
+
+.leaderboard-chip:active {
+  transform: scale(0.95);
+}
+
+@media (hover: hover) {
+  .leaderboard-chip:hover {
+    border-color: color-mix(in srgb, var(--accent-violet) 75%, transparent);
+    box-shadow: 0 0 18px 0 color-mix(in srgb, var(--accent-violet) 38%, transparent);
+  }
+}
+
+/* --- Hak popup'ı — büyük glow'lu ikon + iri rakam + iki ayrı, ikonlu
+   "aksiyon kartı" (reklam / sınırsız), sağ üstte X kapat. */
+.allowance-modal {
+  --accent: var(--accent-amber);
+  position: relative;
+  width: min(340px, 88vw);
+  padding: 36px 24px 26px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  gap: 2px;
+}
+
+.allowance-modal-close {
+  position: absolute;
+  top: 12px;
+  right: 12px;
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  border: none;
+  background: rgba(255, 255, 255, 0.06);
+  color: var(--text-muted);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  touch-action: manipulation;
+  transition: background 0.15s ease, transform 0.08s ease;
+}
+
+.allowance-modal-close svg {
+  width: 16px;
+  height: 16px;
+}
+
+.allowance-modal-close:active {
+  transform: scale(0.9);
+  background: rgba(255, 255, 255, 0.14);
+}
+
+.allowance-modal-icon {
+  width: 64px;
+  height: 64px;
+  border-radius: 50%;
+  background: radial-gradient(circle, color-mix(in srgb, var(--accent) 32%, transparent), transparent 72%);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--accent);
+  filter: drop-shadow(0 0 10px color-mix(in srgb, var(--accent) 65%, transparent));
+  margin-bottom: 8px;
+}
+
+.allowance-modal-icon svg {
+  width: 30px;
+  height: 30px;
+}
+
+.allowance-modal-count {
+  font-family: "Sora", system-ui, sans-serif;
+  font-weight: 800;
+  font-size: 34px;
+  font-variant-numeric: tabular-nums;
+  color: var(--text-primary);
+  line-height: 1;
+}
+
+.allowance-modal-count span {
+  font-size: 17px;
+  color: var(--text-muted);
+  font-weight: 600;
+}
+
+.allowance-modal-title {
+  font-family: "Sora", system-ui, sans-serif;
+  font-size: 18px;
+  font-weight: 700;
+  margin-top: 10px;
+}
+
+.allowance-modal-sub {
+  color: var(--text-muted);
+  font-size: 13px;
+  margin-top: 3px;
+  margin-bottom: 20px;
+  min-height: 1.3em;
+}
+
+.allowance-modal-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  width: 100%;
+}
+
+.allowance-action {
+  --accent: var(--accent-amber);
+  appearance: none;
+  border: 1.5px solid color-mix(in srgb, var(--accent) 40%, transparent);
+  background: color-mix(in srgb, var(--accent) 9%, #171a25);
+  color: var(--text-primary);
+  border-radius: 14px;
+  padding: 11px 14px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  cursor: pointer;
+  touch-action: manipulation;
+  text-align: left;
+  font-family: "Manrope", sans-serif;
+  transition: transform 0.08s ease, border-color 0.15s ease, box-shadow 0.15s ease;
+}
+
+.allowance-action:active {
+  transform: scale(0.97);
+  border-color: var(--accent);
+}
+
+@media (hover: hover) {
+  .allowance-action:hover {
+    border-color: var(--accent);
+    box-shadow: 0 0 14px 0 color-mix(in srgb, var(--accent) 30%, transparent);
+  }
+}
+
+.allowance-action:disabled {
+  opacity: 0.5;
+  pointer-events: none;
+}
+
+.allowance-action[hidden] {
+  display: none !important;
+}
+
+.allowance-action-icon {
+  width: 38px;
+  height: 38px;
+  border-radius: 10px;
+  background: color-mix(in srgb, var(--accent) 26%, transparent);
+  color: var(--accent);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.allowance-action-icon svg {
+  width: 18px;
+  height: 18px;
+}
+
+.allowance-action-icon-inf {
+  font-size: 20px;
+  font-weight: 800;
+  font-family: "Sora", system-ui, sans-serif;
+}
+
+.allowance-action-text {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+}
+
+.allowance-action-text b {
+  font-family: "Sora", system-ui, sans-serif;
+  font-size: 14.5px;
+  font-weight: 700;
+}
+
+.allowance-action-text small {
+  font-size: 12px;
+  color: var(--text-muted);
+  font-weight: 500;
+}
+
+/* --- "Ne kadar iyisin?" istatistik ekranı --- */
+/* Header ve içeriğin ekranda dengeli, üst-alt boşluğu orantılı görünmesi
+   hedefleniyor. İki alternatif yaklaşım yetersiz kaldı:
+   1) Sadece .stats-content'i top-bar'ın altında ortalamak — top-bar'ın
+      kendisi hâlâ en üstte kalıyordu.
+   2) Tüm #screen-stats'i (top-bar + stats-content) justify-content:center
+      ile ortalamak — tüm zorluklar çözüldüğünde (Kolay/Orta/Zor/Usta hepsi
+      "X çözüldü" dolu) içerik zaten neredeyse ekranı dolduruyor, bu yüzden
+      ortalamanın dağıtacağı boşluk pratikte neredeyse sıfıra iniyor —
+      matematiksel olarak "ortalanmış" ama görsel fark yok, header yine
+      üstte yapışık kalıyor.
+   Bunun yerine: içerik miktarına bağlı ortalama yerine, top-bar'a sabit bir
+   üst boşluk veriliyor (ekranın .screen padding'indeki 20px'ten bağımsız,
+   doğrudan bu ekrana özel) — içerik ne kadar olursa olsun header her zaman
+   aynı mesafede kalıyor. Değer, ekranın kendi 20px'lik temel padding'ine
+   ~16-20px ekleyen ılımlı bir seviyede tutuldu. */
+#screen-stats {
+  padding-top: max(36px, calc(env(safe-area-inset-top) + 16px));
+}
+
+.stats-content {
+  display: flex;
+  flex-direction: column;
+  margin-top: 28px;
+}
+
+.stats-summary {
+  display: flex;
+  gap: 12px;
+  margin-top: 18px;
+  justify-content: center;
+}
+
+.stats-summary-item {
+  flex: 1;
+  max-width: 160px;
+  background: var(--bg-panel);
+  border: 1.5px solid rgba(255, 255, 255, 0.1);
+  border-radius: 14px;
+  padding: 14px 10px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+}
+
+.stats-summary-num {
+  font-family: "Sora", system-ui, sans-serif;
+  font-size: 26px;
+  font-weight: 800;
+  color: var(--accent-cyan);
+}
+
+/* Ünvan (rank) metni sayı değil, kısa bir kelime öbeği (ör. "Prizma
+   Ustası"); 160px'lik kutuya sığması için puan (.stats-summary-num, 26px)
+   kadar büyük değil. Okunabilirlik için 18px'e ayarlandı — kutu iki satıra
+   sarmayı zaten destekliyor, "Prizma Ustası"/"Işık Efsanesi" gibi uzun
+   ünvanlar da rahatça sığıyor. */
+.stats-summary-num-text {
+  font-family: "Sora", system-ui, sans-serif;
+  font-size: 18px;
+  font-weight: 800;
+  color: var(--accent-amber);
+  text-align: center;
+  line-height: 1.22;
+}
+
+.stats-summary-item span:last-child {
+  font-size: 12px;
+  color: var(--text-muted);
+}
+
+.stats-list {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  margin-top: 18px;
+  overflow-y: auto;
+  max-height: 100%;
+}
+
+.stats-row {
+  --accent: var(--accent-cyan);
+  background: var(--bg-panel);
+  border: 1.5px solid rgba(255, 255, 255, 0.1);
+  border-radius: 14px;
+  padding: 14px 16px;
+  border-color: color-mix(in srgb, var(--accent) 35%, transparent);
+}
+
+.stats-row-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  font-family: "Sora", system-ui, sans-serif;
+  font-weight: 700;
+  font-size: 14px;
+}
+
+.stats-row-label {
+  color: var(--accent);
+  letter-spacing: 0.03em;
+}
+
+.stats-row-count {
+  color: var(--text-muted);
+  font-weight: 500;
+  font-size: 12px;
+}
+
+.stats-bar-track {
+  margin-top: 8px;
+  height: 8px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.08);
+  overflow: hidden;
+}
+
+.stats-bar-fill {
+  height: 100%;
+  border-radius: 999px;
+  background: var(--accent);
+  box-shadow: 0 0 8px 0 color-mix(in srgb, var(--accent) 60%, transparent);
+  transition: width 0.3s ease;
+}
+
+.stats-row-bottom {
+  margin-top: 8px;
+  display: flex;
+  justify-content: space-between;
+  font-size: 12px;
+  color: var(--text-muted);
+}
+
+.stats-row-bottom b {
+  color: var(--text-primary);
+  font-variant-numeric: tabular-nums;
+}
+
+/* --- Alt banner reklam yeri: native AdMob banner'ı (varsa) WebView'in
+   ÜZERİNE bindirir, DOM'da yer kaplamaz — bu boşluk sadece oyun içeriğinin
+   reklamın ALTINDA kalmaması için ayrılan bir "spacer". --- */
+.ad-banner-spacer {
+  height: 50px;
+  flex-shrink: 0;
+}
+
+/* --- Ambiyans lekeler (GlowBackdrop karşılığı) --- */
+.atmosphere {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  z-index: -1;
+  overflow: hidden;
+}
+
+.atmosphere::before,
+.atmosphere::after {
+  content: "";
+  position: absolute;
+  width: 55vmax;
+  height: 55vmax;
+  border-radius: 50%;
+  filter: blur(60px);
+  opacity: 0.35;
+}
+
+.atmosphere::before {
+  top: -18vmax;
+  left: -18vmax;
+  background: radial-gradient(circle, var(--accent-cyan), transparent 70%);
+}
+
+.atmosphere::after {
+  bottom: -20vmax;
+  right: -20vmax;
+  background: radial-gradient(circle, var(--accent-violet), transparent 70%);
+}

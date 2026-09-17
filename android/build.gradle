@@ -1,0 +1,63 @@
+// Top-level build file where you can add configuration options common to all sub-projects/modules.
+
+buildscript {
+    
+    repositories {
+        google()
+        mavenCentral()
+    }
+    dependencies {
+        classpath 'com.android.tools.build:gradle:8.7.3'
+        classpath 'com.google.gms:google-services:4.4.0'
+        // @capacitor-community/admob'un android modülü Kotlin ile yazılmış
+        // ve kendi build.gradle'ında `apply plugin: 'kotlin-android'`
+        // kullanıyor — ama bu alt modülün KENDİ buildscript{} bloğu (aynı
+        // dosyada, kotlin-gradle-plugin classpath'i içeren) bu çok-projeli
+        // build içinde fiilen kullanılmıyor; plugin sınıf yolu ROOT projenin
+        // buildscript classpath'inden geliyor. Root'ta bu satır olmadan
+        // "Clean Project" sonrası tam/temiz bir değerlendirmede admob'un
+        // 'org.jetbrains.kotlin.android' plugin'i bulunamıyordu (versiyon
+        // numarası olmadan Plugin Portal'dan çözülemiyor). admob'un kendi
+        // build.gradle'ındaki kotlin_version (1.9.10) ile eşleştirildi.
+        classpath 'org.jetbrains.kotlin:kotlin-gradle-plugin:1.9.10'
+
+        // NOTE: Do not place your application dependencies here; they belong
+        // in the individual module build.gradle files
+    }
+}
+
+apply from: "variables.gradle"
+
+allprojects {
+    repositories {
+        google()
+        mavenCentral()
+    }
+}
+
+task clean(type: Delete) {
+    delete rootProject.buildDir
+}
+
+// Play Console: "Play automatic protection requires minSdk 24, uploaded
+// bundle has minSdk 22". app/build.gradle zaten (rootProject.ext üzerinden,
+// artık DOĞRUDAN sabit 24 olarak) 24 gerektiriyordu, ama temiz derlemeden
+// sonra bile Play Console 22 gördü. Şüpheli: bazı Capacitor/cordova ALT
+// MODÜLLERİNİN (ör. node_modules/@capacitor/android/capacitor/build.gradle)
+// kendi minSdkVersion satırı `project.hasProperty('minSdkVersion') ?
+// rootProject.ext.minSdkVersion : 22` şeklinde — yani rootProject.ext'i
+// normal şartlarda görmeleri gerekse de (bu proje node_modules içindeki bu
+// dosyaları elle DÜZENLEMEK istemediğimiz için, npm install ile silinir/
+// üzerine yazılır) burada HER alt modülü, kendi build.gradle'ı ne yazarsa
+// yazsın, GARANTİ olarak 24'e zorluyoruz — bu, minSdk uyuşmazlığının kaynağı
+// hangi modül olursa olsun (capacitor-android, capacitor-app,
+// capacitor-local-notifications, capacitor-community-admob,
+// capacitor-cordova-android-plugins, ya da içindeki cordova eklenti
+// alt-modülleri) sorunu kesin olarak çözer.
+subprojects { sub ->
+    afterEvaluate {
+        if (sub.hasProperty('android')) {
+            sub.android.defaultConfig.minSdkVersion 24
+        }
+    }
+}

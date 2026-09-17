@@ -1,0 +1,6 @@
+node_modules/
+npm-debug.log*
+
+# Temporary/working files not part of the shipped app
+_gecici_*
+_gecici_screenshots/

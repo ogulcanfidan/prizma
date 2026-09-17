@@ -1,0 +1,98 @@
+apply plugin: 'com.android.application'
+
+android {
+    namespace "com.fmjapps.prizma"
+    compileSdk rootProject.ext.compileSdkVersion
+    defaultConfig {
+        applicationId "com.fmjapps.prizma"
+        // Play Console AAB yüklemesinde "Play automatic protection requires
+        // minSdk 24, uploaded bundle has minSdk 22" hatası alınıyordu — temiz
+        // derlemeden (gradlew clean + Rebuild) sonra bile tekrarlıyordu.
+        // `rootProject.ext.minSdkVersion` (variables.gradle'da 24) burada
+        // dolaylı bir referanstı; kök nedeni kesinleştirmeden garanti bir
+        // çözüm için doğrudan sabit değere geçirildi (ayrıca aşağıdaki root
+        // build.gradle'a TÜM alt modülleri (capacitor-android dahil, ki
+        // onun kendi build.gradle'ında `project.hasProperty('minSdkVersion')
+        // ? ... : 22` şeklinde 22'ye düşen bir yedek değer vardı — asıl
+        // şüpheli budur) zorlayan bir `subprojects { afterEvaluate { ... } }`
+        // bloğu eklendi).
+        minSdkVersion 24
+        targetSdkVersion rootProject.ext.targetSdkVersion
+        // Play Console'daki mevcut yüklü sürüm "3 (1.2)" idi ama bu dosyada
+        // hâlâ versionCode 1 / versionName "1.0" yazıyordu. Play Console her
+        // yeni yüklemede versionCode'un öncekinden kesinlikle daha yüksek
+        // olmasını zorunlu tutar. Önce 4'e yükseltilmişti, ama o versionCode'lu
+        // AAB (minSdk hatası yüzünden reddedilmiş olsa bile) Play Console'a bir
+        // kez "yüklendiği" için versionCode 4 orada kullanılmış sayıldı ("4
+        // sürüm kodu daha önce kullanıldı" hatası) — yani reddedilen/
+        // tamamlanmayan bir yükleme denemesi bile o kodu tüketiyor. Bu yüzden
+        // 5'e çekildi; versionName de 1.4'e. versionCode 5 zaten incelemeye
+        // gönderildi (onaylandı/onay bekliyor).
+        // strings.xml'deki Play Games Services proje/skor tablosu ID'leri
+        // gerçek değerlerle dolduruldu — bu da yeni bir build/versionCode
+        // gerektirir (derlenmiş APK/AAB içine gömülü, aynı versionCode ile
+        // tekrar yüklenemez). 6'ya çekildi; versionName 1.5.
+        // submitScore/board.js/generator.js düzeltmeleri için yeni bir AAB
+        // yüklenmesi gerekti, Play Console "6 sürüm kodu daha önce kullanıldı"
+        // dedi (6 zaten yüklenmişti) — 7'ye çekildi; versionName 1.6.
+        // versionCode 7 Play Console'a yüklenip incelemeye girdi ("İncelemede").
+        // Ardından bu dosya (build.gradle) yanlışlıkla başka bir projenin
+        // içeriğiyle üzerine yazıldı ve geri yüklendi — hangi versionCode 7
+        // AAB'sinin gerçekte yüklendiği belirsiz olduğundan (düzeltmeden önce
+        // mi sonra mı), ayrıca submitScore fire-and-forget düzeltmesi ve yeni
+        // prizma_unlimited satın alma ürünü de test edilmesi gerektiğinden
+        // temiz bir sürüm için 8'e çekildi; versionName 1.7.
+        // versionCode 8 Play Console'a yüklenip incelemeye girdi ("İncelemede").
+        // Ancak o build alınmadan hemen önce www/js/main.js içinde "Sıralama"
+        // (leaderboard) butonunun hâlâ ham DEBUG tanı metnini (native taraftan
+        // gelen exception/canceled/playServices/onActivityResult detaylarını)
+        // kullanıcıya alert() ile gösterdiği fark edildi — bu satır kaldırıldı,
+        // ama düzeltme cap sync + build'den sonra yapıldığı için 8 numaralı
+        // AAB'de hâlâ mevcut. Temiz bir sürüm için 9'a çekildi; versionName 1.8.
+        versionCode 9
+        versionName "1.8"
+        testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
+        aaptOptions {
+             // Files and dirs to omit from the packaged assets dir, modified to accommodate modern web apps.
+             // Default: https://android.googlesource.com/platform/frameworks/base/+/282e181b58cf72b6ca770dc7ca5f91f135444502/tools/aapt/AaptAssets.cpp#61
+            ignoreAssetsPattern '!.svn:!.git:!.ds_store:!*.scc:.*:!CVS:!thumbs.db:!picasa.ini:!*~'
+        }
+    }
+    buildTypes {
+        release {
+            minifyEnabled false
+            proguardFiles getDefaultProguardFile('proguard-android.txt'), 'proguard-rules.pro'
+        }
+    }
+}
+
+repositories {
+    flatDir{
+        dirs '../capacitor-cordova-android-plugins/src/main/libs', 'libs'
+    }
+}
+
+dependencies {
+    implementation fileTree(include: ['*.jar'], dir: 'libs')
+    implementation "androidx.appcompat:appcompat:$androidxAppCompatVersion"
+    implementation "androidx.coordinatorlayout:coordinatorlayout:$androidxCoordinatorLayoutVersion"
+    implementation "androidx.core:core-splashscreen:$coreSplashScreenVersion"
+    implementation project(':capacitor-android')
+    // Google Play Games Services v2 — liderlik tablosu (bkz. PlayGamesPlugin.java).
+    implementation "com.google.android.gms:play-services-games-v2:$playServicesGamesVersion"
+    testImplementation "junit:junit:$junitVersion"
+    androidTestImplementation "androidx.test.ext:junit:$androidxJunitVersion"
+    androidTestImplementation "androidx.test.espresso:espresso-core:$androidxEspressoCoreVersion"
+    implementation project(':capacitor-cordova-android-plugins')
+}
+
+apply from: 'capacitor.build.gradle'
+
+try {
+    def servicesJSON = file('google-services.json')
+    if (servicesJSON.text) {
+        apply plugin: 'com.google.gms.google-services'
+    }
+} catch(Exception e) {
+    logger.info("google-services.json not found, google-services plugin not applied. Push Notifications won't work")
+}

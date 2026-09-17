@@ -1,0 +1,35 @@
+ext {
+    // play-services-games-v2:22.0.0 kütüphanesi minSdk 24 (Android 7.0/
+    // Nougat) istiyor — eski değer (23) ile Android Studio'da "Manifest
+    // merger failed: uses-sdk:minSdkVersion 23 cannot be smaller than
+    // version 24" derleme hatası veriyordu. En doğru/güvenli çözüm projenin
+    // minSdk'sini kütüphanenin istediği seviyeye çıkarmak (manifest içinde
+    // tools:overrideLibrary ile "zorlamak" değil — bu sadece derleme hatasını
+    // bastırır, kütüphane çalışma zamanında yine API 24+ davranışına
+    // güvenebilir ve API 23 cihazlarda çökmeye yol açabilir). API 23 (Android
+    // 6.0) artık aktif cihazların çok küçük bir kısmı — bu ödünleşim kabul
+    // edilebilir.
+    minSdkVersion = 24
+    // Play Console kapalı test sürümü yüklerken engelleyici bir hata verdi:
+    // "Uygulamanız API 35'i hedefliyor, Google artık en az API 36 istiyor"
+    // (Play'in periyodik olarak yükselttiği zorunlu hedef API politikası —
+    // targetSdkVersion'dır, minSdkVersion'la karıştırılmasın, minSdk cihaz
+    // desteğini, targetSdk ise "hangi Android davranışlarına göre
+    // derlendiğini" belirler). compileSdkVersion de targetSdk'dan düşük
+    // olamaz, o yüzden ikisi birlikte 36'ya çekildi.
+    compileSdkVersion = 36
+    targetSdkVersion = 36
+    androidxActivityVersion = '1.8.0'
+    androidxAppCompatVersion = '1.6.1'
+    androidxCoordinatorLayoutVersion = '1.2.0'
+    androidxCoreVersion = '1.12.0'
+    androidxFragmentVersion = '1.6.2'
+    coreSplashScreenVersion = '1.0.1'
+    androidxWebkitVersion = '1.9.0'
+    junitVersion = '4.13.2'
+    androidxJunitVersion = '1.1.5'
+    androidxEspressoCoreVersion = '3.5.1'
+    cordovaAndroidVersion = '10.1.1'
+    // Google Play Games Services v2 — liderlik tablosu (leaderboard) için.
+    playServicesGamesVersion = '22.0.0'
+}

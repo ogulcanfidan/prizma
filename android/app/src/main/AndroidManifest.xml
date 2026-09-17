@@ -1,0 +1,76 @@
+<?xml version="1.0" encoding="utf-8"?>
+<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+
+    <application
+        android:allowBackup="true"
+        android:icon="@mipmap/ic_launcher"
+        android:label="@string/app_name"
+        android:roundIcon="@mipmap/ic_launcher_round"
+        android:supportsRtl="true"
+        android:theme="@style/AppTheme">
+
+        <!-- AdMob SDK requires this meta-data tag; without it the app throws
+             IllegalStateException on first launch (or on first ad request).
+             The value must match capacitor.config.json > plugins.AdMob.appId. -->
+        <meta-data
+            android:name="com.google.android.gms.ads.APPLICATION_ID"
+            android:value="ca-app-pub-2569162850712494~6258031941" />
+
+        <!-- Play Games Services v2 leaderboard. The value is the numeric
+             "Project ID" from Play Console > Play Games Services > Setup
+             and management > Configuration (see strings.xml >
+             game_services_project_id — must be set to the real value before
+             release, otherwise sign-in/score submission fails silently
+             without crashing the app). -->
+        <meta-data
+            android:name="com.google.android.gms.games.APP_ID"
+            android:value="@string/game_services_project_id" />
+
+        <!-- The board's SVG layout (board.js) is designed for a portrait
+             aspect ratio only; no screen ever renders a landscape layout.
+             This activity previously had no screenOrientation set, so it
+             followed the device's own rotation behavior (typically free
+             rotation). Locking to portrait keeps the layout intact
+             regardless of how the device is held. -->
+        <activity
+            android:configChanges="orientation|keyboardHidden|keyboard|screenSize|locale|smallestScreenSize|screenLayout|uiMode"
+            android:name=".MainActivity"
+            android:label="@string/title_activity_main"
+            android:theme="@style/AppTheme.NoActionBarLaunch"
+            android:launchMode="singleTask"
+            android:screenOrientation="portrait"
+            android:exported="true">
+
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+                <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+
+        </activity>
+
+        <provider
+            android:name="androidx.core.content.FileProvider"
+            android:authorities="${applicationId}.fileprovider"
+            android:exported="false"
+            android:grantUriPermissions="true">
+            <meta-data
+                android:name="android.support.FILE_PROVIDER_PATHS"
+                android:resource="@xml/file_paths"></meta-data>
+        </provider>
+    </application>
+
+    <!-- Permissions -->
+
+    <uses-permission android:name="android.permission.INTERNET" />
+
+    <!-- Required for in-app purchases: iap.js uses cordova-plugin-purchase,
+         which does not automatically inject this permission into the
+         manifest in a Capacitor + Cordova-plugin bridge, so it has to be
+         added manually. Without it, Play Console treats an uploaded APK/AAB
+         as unable to purchase and keeps the one-time products screen fully
+         locked. Note that this line alone is not sufficient — a new build
+         (npx cap sync android + a signed APK/AAB) must be uploaded to Play
+         Console (at least to closed testing) before Google recognizes this
+         permission and unlocks product creation. -->
+    <uses-permission android:name="com.android.vending.BILLING" />
+</manifest>

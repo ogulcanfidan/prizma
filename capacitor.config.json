@@ -1,0 +1,15 @@
+{
+  "appId": "com.fmjapps.prizma",
+  "appName": "Prizma",
+  "webDir": "www",
+  "bundledWebRuntime": false,
+  "backgroundColor": "#0A0D18",
+  "android": {
+    "backgroundColor": "#0A0D18"
+  },
+  "plugins": {
+    "AdMob": {
+      "appId": "ca-app-pub-2569162850712494~6258031941"
+    }
+  }
+}

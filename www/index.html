@@ -1,0 +1,207 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover" />
+  <meta name="theme-color" content="#0b0c12" />
+  <title>Prizma</title>
+  <link rel="stylesheet" href="css/style.css" />
+</head>
+<body>
+  <div id="app">
+
+    <!-- Ana Menü -->
+    <section id="screen-menu" class="screen">
+      <div class="atmosphere"></div>
+      <button class="btn-icon corner-tl" id="btn-settings" aria-label="Ayarlar">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+          <circle cx="12" cy="12" r="3"/>
+          <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/>
+        </svg>
+      </button>
+      <button class="allowance-chip corner-tr" id="allowance-badge-menu" aria-label="Bulmaca hakkı">
+        <span class="allowance-chip-icon">
+          <svg viewBox="0 0 24 24" fill="currentColor"><path d="M13 3 5 14h5.4L9.4 21 19 9h-6.1L13 3Z"/></svg>
+        </span>
+        <span class="allowance-chip-count"><span id="allowance-badge-num-menu">30</span><small id="allowance-badge-max-menu">/30</small></span>
+      </button>
+      <div class="logo-mark" id="logo-mark"></div>
+      <div class="logo-title">PRIZMA</div>
+      <div class="logo-subtitle" id="menu-subtitle" data-i18n="menu.subtitle">Işığı Kır, Prizmayı Çöz.</div>
+      <!-- Ana menüdeki üç birincil buton (Başla / Ne kadar iyisin? / Eğitimi
+           Tekrar Oyna) görsel tutarlılık için aynı --accent-cyan vurgusunu
+           kullanır (Ayarlar dişlisi #btn-settings'in dinlenme durumu için
+           stil ise ayrı bir CSS kuralla style.css'te veriliyor, bkz. oradaki
+           not — o buton .btn değil .btn-icon kullanıyor). Eğitim tekrar
+           butonu bilinçli olarak farklı bir vurgu rengiyle (violet)
+           ayrıştırılmıştır. -->
+      <div class="menu-actions">
+        <button class="btn primary" id="btn-play" style="--accent: var(--accent-cyan)">BAŞLA</button>
+        <button class="btn primary" id="btn-stats" style="--accent: var(--accent-cyan)" data-i18n="menu.stats">Ne kadar iyisin?</button>
+        <button class="btn primary" id="btn-egitim" style="--accent: var(--accent-violet)" hidden data-i18n="menu.replay">Eğitimi Tekrar Oyna</button>
+      </div>
+    </section>
+
+    <!-- Ayarlar -->
+    <section id="screen-settings" class="screen" hidden>
+      <div class="atmosphere"></div>
+      <div class="top-bar">
+        <button class="btn-back-icon" id="settings-back" aria-label="Geri">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M15 5 8 12l7 7"/></svg>
+        </button>
+        <div class="title" data-i18n="settings.title">Ayarlar</div>
+        <div style="width:40px"></div>
+      </div>
+      <div class="settings-list">
+        <div class="settings-row">
+          <div class="settings-row-label">
+            <span data-i18n="settings.music">Müzik</span>
+            <span class="settings-row-value" id="settings-music-value">60%</span>
+          </div>
+          <input type="range" min="0" max="100" value="60" id="settings-music" class="slider" />
+        </div>
+        <div class="settings-row">
+          <div class="settings-row-label">
+            <span data-i18n="settings.sfx">Ses Efektleri</span>
+            <span class="settings-row-value" id="settings-sfx-value">80%</span>
+          </div>
+          <input type="range" min="0" max="100" value="80" id="settings-sfx" class="slider" />
+        </div>
+        <button class="settings-toggle-row" id="settings-notif-row">
+          <span data-i18n="settings.notif">Günlük hatırlatma bildirimi</span>
+          <span class="toggle" id="settings-notif-toggle"><span class="toggle-knob"></span></span>
+        </button>
+        <div class="settings-row">
+          <div class="settings-row-label">
+            <span data-i18n="settings.language">Dil</span>
+          </div>
+          <select id="settings-language" class="lang-select"></select>
+        </div>
+      </div>
+    </section>
+
+    <!-- Zorluk Seçimi -->
+    <section id="screen-difficulty" class="screen" hidden>
+      <div class="atmosphere"></div>
+      <div class="top-bar">
+        <button class="btn-back-icon" id="diff-back" aria-label="Geri">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M15 5 8 12l7 7"/></svg>
+        </button>
+        <div class="title" data-i18n="difficulty.title">Zorluk Seç</div>
+        <button class="allowance-chip" id="allowance-badge" aria-label="Bulmaca hakkı">
+          <span class="allowance-chip-icon">
+            <svg viewBox="0 0 24 24" fill="currentColor"><path d="M13 3 5 14h5.4L9.4 21 19 9h-6.1L13 3Z"/></svg>
+          </span>
+          <span class="allowance-chip-count"><span id="allowance-badge-num">30</span><small id="allowance-badge-max">/30</small></span>
+        </button>
+      </div>
+      <div class="center" id="diff-buttons"></div>
+    </section>
+
+    <!-- Ne kadar iyisin? (istatistikler) -->
+    <section id="screen-stats" class="screen" hidden>
+      <div class="atmosphere"></div>
+      <div class="top-bar">
+        <button class="btn-back-icon" id="stats-back" aria-label="Geri">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M15 5 8 12l7 7"/></svg>
+        </button>
+        <div class="title" data-i18n="menu.stats">Ne kadar iyisin?</div>
+        <!-- Sıralama butonu, geri okuyla aynı nötr .btn-back-icon stili
+             yerine .allowance-chip ile aynı "cam panel rozeti" deseninde,
+             mor (--accent-violet) vurgulu, ikon + metinli bir chip olarak
+             tasarlandı — bu sayede daha görünür ve amacı net oluyor. -->
+        <button class="leaderboard-chip" id="btn-leaderboard" aria-label="Sıralama">
+          <span class="leaderboard-chip-icon">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M8 21h8M12 17v4M7 4h10v5a5 5 0 0 1-10 0V4Z"/><path d="M7 6H4a1 1 0 0 0-1 1c0 2.5 1.8 4.5 4.2 4.9M17 6h3a1 1 0 0 1 1 1c0 2.5-1.8 4.5-4.2 4.9"/></svg>
+          </span>
+          <span class="leaderboard-chip-text" data-i18n="stats.leaderboard">Sıralama</span>
+        </button>
+      </div>
+      <!-- Özet kartları + zorluk listesi, üst ve alt boşluğun dengeli
+           görünmesi için top-bar'ın altındaki kalan alanda dikey olarak
+           ortalanır (bkz. style.css > .stats-content), sabit üstte yığılmak
+           yerine. -->
+      <div class="stats-content">
+        <div class="stats-summary" id="stats-summary"></div>
+        <div class="stats-list" id="stats-list"></div>
+      </div>
+    </section>
+
+    <!-- Oyun (onboarding + sonsuz mod ortak) -->
+    <section id="screen-game" class="screen" hidden>
+      <div class="atmosphere"></div>
+      <div class="top-bar">
+        <button class="btn-back-icon" id="game-back" aria-label="Geri">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M15 5 8 12l7 7"/></svg>
+        </button>
+        <div class="title" id="game-title">Başlık</div>
+        <div class="timer" id="game-timer">00:00</div>
+      </div>
+      <div class="tutorial-text" id="game-tutorial"></div>
+      <div class="board-center">
+        <div class="board-frame" id="board-frame"></div>
+      </div>
+      <div class="bottom-bar">
+        <button class="btn small" id="game-reset" style="--accent: var(--accent-cyan)" data-i18n="game.reset">Sıfırla</button>
+        <div class="hint-text" id="game-hint">Ayna hakkı: 0</div>
+      </div>
+      <div class="fire-row">
+        <button class="btn primary fire-btn" id="game-fire" style="--accent: var(--accent-cyan)" data-i18n="game.fire">Işını Çalıştır</button>
+      </div>
+      <div class="fail-toast" id="fail-toast" hidden data-i18n="game.failToast">Yanlış yerleşim — tekrar dene.</div>
+      <div class="ad-banner-spacer" id="ad-banner-spacer" hidden></div>
+
+      <div class="win-overlay" id="win-overlay" hidden>
+        <div class="win-panel panel" style="--accent: var(--accent-cyan)" id="win-panel">
+          <div class="win-title" data-i18n="win.solved">Çözüldü!</div>
+          <div class="win-time" id="win-time">Süre: 00:00</div>
+          <button class="btn primary" id="win-next" style="--accent: var(--accent-cyan)">Sıradaki</button>
+        </div>
+      </div>
+
+      <!-- Eğitim tamamlandı ekranı: eğitimin sonunda oyuncuyu doğrudan
+           zorluk seçimine atmak yerine, tamamlandığını bildiren ayrı bir
+           ekran gösterilir. winNextBtn'in son eğitim bulmacasından sonraki
+           tıklamasında showDifficultySelect() yerine bu gösterilir
+           (bkz. main.js). -->
+      <div class="win-overlay" id="onboarding-done-overlay" hidden>
+        <div class="win-panel panel" style="--accent: var(--accent-cyan)" id="onboarding-done-panel">
+          <div class="win-title" data-i18n="onboardingDone.title">Eğitim Tamamlandı!</div>
+          <div class="win-time" id="onboarding-done-sub" data-i18n="onboardingDone.sub">Artık oyuna geçebilirsin.</div>
+          <button class="btn primary" id="onboarding-done-play" style="--accent: var(--accent-cyan)" data-i18n="onboardingDone.play">OYNA</button>
+        </div>
+      </div>
+    </section>
+
+    <!-- Hak popup'ı: hem hak biterken hem de rozete proaktif dokununca açılır -->
+    <div class="win-overlay" id="allowance-overlay" hidden>
+      <div class="allowance-modal panel" style="--accent: var(--accent-amber)" id="allowance-panel">
+        <button class="allowance-modal-close" id="allowance-cancel" aria-label="Kapat">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M6 6l12 12M18 6 6 18"/></svg>
+        </button>
+        <div class="allowance-modal-icon">
+          <svg viewBox="0 0 24 24" fill="currentColor"><path d="M13 3 5 14h5.4L9.4 21 19 9h-6.1L13 3Z"/></svg>
+        </div>
+        <div class="allowance-modal-count" id="allowance-modal-count">20<span>/30</span></div>
+        <div class="allowance-modal-title" id="allowance-title">Ekstra Hak Al</div>
+        <div class="allowance-modal-sub" id="allowance-next-text">Sıradaki hak için bekle</div>
+        <div class="allowance-modal-actions">
+          <button class="allowance-action" id="allowance-watch-ad" style="--accent: var(--accent-amber)">
+            <span class="allowance-action-icon">
+              <svg viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z"/></svg>
+            </span>
+            <span class="allowance-action-text"><b data-i18n="allowance.watchAd">Reklam İzle</b><small id="allowance-watch-ad-bonus">+15 hak</small></span>
+          </button>
+          <button class="allowance-action" id="allowance-buy-unlimited" style="--accent: var(--accent-violet)">
+            <span class="allowance-action-icon allowance-action-icon-inf">∞</span>
+            <span class="allowance-action-text"><b data-i18n="allowance.buyUnlimited">Sınırsız Ol</b><small data-i18n="allowance.buyUnlimitedPrice">39,99 TL — tek seferlik</small></span>
+          </button>
+        </div>
+      </div>
+    </div>
+
+  </div>
+
+  <script type="module" src="js/main.js"></script>
+</body>
+</html>

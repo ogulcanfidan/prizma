@@ -1,0 +1,21 @@
+{
+  "name": "prizma",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Prizma — Işın, ayna, portal ve renk karışımı bulmacası.",
+  "scripts": {
+    "sync": "cap sync android",
+    "open:android": "cap open android"
+  },
+  "dependencies": {
+    "@capacitor/android": "^6.2.0",
+    "@capacitor/core": "^6.2.0",
+    "@capacitor/app": "^6.0.0",
+    "@capacitor/local-notifications": "^6.1.0",
+    "@capacitor-community/admob": "^6.2.0",
+    "cordova-plugin-purchase": "^13.12.1"
+  },
+  "devDependencies": {
+    "@capacitor/cli": "^6.2.0"
+  }
+}

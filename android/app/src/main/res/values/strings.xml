@@ -1,0 +1,18 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <string name="app_name">Prizma</string>
+    <string name="title_activity_main">Prizma</string>
+    <string name="package_name">com.fmjapps.prizma</string>
+    <string name="custom_url_scheme">com.fmjapps.prizma</string>
+
+    <!-- Play Games Services v2 — liderlik tablosu. Play Console > Play Games
+         Services > Kurulum ve yönetim > Yapılandırma sayfasında proje
+         oluşturulup "Total Score" adlı skor tablosu eklenerek gerçek
+         değerler alındı ve buraya yazıldı:
+         1) game_services_project_id: Play Console'daki "Proje Kimliği"
+            (AndroidManifest.xml'de APP_ID olarak kullanılıyor).
+         2) leaderboard_id_total_points: "Total Score" skor tablosunun
+            Play Console'daki Kimlik (ID) değeri. -->
+    <string name="game_services_project_id" translatable="false">680521810345</string>
+    <string name="leaderboard_id_total_points" translatable="false">CgkIqYOLkucTEAIQAA</string>
+</resources>
