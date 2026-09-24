@@ -250,8 +250,11 @@ for (const diff of Object.keys(TIER_RANGES)) {
       // Her bölümde en az N kaynak olmalı (Zor: 2, Usta: 3, sabit tasarım
       // gereği tam N).
       if (p.sources.length !== minSrc) s.minSourcesOk = false;
-      // "N hedef VEYA 1 hedef" (paylaşılan tek hedef).
-      if (p.targets.length !== minSrc && p.targets.length !== 1) s.targetCountOk = false;
+      // Splitter'sız: "N hedef VEYA 1 hedef" (paylaşılan tek hedef).
+      // Splitter'lı: N+1 hedef (splitter'ın iki kolu ayrı hedeflere gider,
+      // bkz. generator.js → tryComplexBeam).
+      const okCounts = hasSplitter ? [minSrc + 1] : [minSrc, 1];
+      if (!okCounts.includes(p.targets.length)) s.targetCountOk = false;
       if (hasPortal && !hasSplitter) {
         s.portalOnlyCount++;
         if (checkPortalNecessary(p)) s.portalOnlyNecessaryCount++;
@@ -274,7 +277,7 @@ for (const diff of Object.keys(TIER_RANGES)) {
     check(`${diff}: en az bir kez splitter (Prizma Bloğu) üretildi (${s.splitter}/${N})`, s.splitter > 0);
     check(`${diff}: splitter içeren bulmacalar da ayna aralığında kalıyor`, s.splitterInRange);
     check(`${diff}: HER bulmacada tam olarak ${MIN_SOURCES[diff]} kaynak var (kullanıcı isteği)`, s.minSourcesOk);
-    check(`${diff}: HER bulmacada hedef sayısı ${MIN_SOURCES[diff]} ya da 1 (paylaşılan) — "N hedef veya 1 hedef"`, s.targetCountOk);
+    check(`${diff}: hedef sayısı splitter'sızda ${MIN_SOURCES[diff]} ya da 1, splitter'lıda ${MIN_SOURCES[diff] + 1}`, s.targetCountOk);
     check(
       `${diff}: splitter'sız (portal-only) bulmacaların TAMAMINDA (${s.portalOnlyNecessaryCount}/${s.portalOnlyCount}) portal gerçekten gerekli (Round 11 mantığı)`,
       s.portalOnlyCount === 0 || s.portalOnlyNecessaryCount === s.portalOnlyCount
@@ -284,6 +287,29 @@ for (const diff of Object.keys(TIER_RANGES)) {
       Math.abs(bothFreq - targetBoth[diff]) < bothTolerance[diff]
     );
   }
+}
+
+// --- Worker veri aktarımı: generator.worker.js bulmacayı { ...puzzle } olarak
+// postMessage ile gönderir (structured clone), puzzleService.js onu
+// Object.assign(new PuzzleData(), raw) ile geri kurar. Map alanları ve
+// metotlar (getCell, splitterExits…) bu yolculuktan sonra da çalışmalı.
+{
+  let roundTripOk = true;
+  for (const diff of ["kolay", "orta", "zor", "usta"]) {
+    rng.seed(31337 + diff.length);
+    const original = generate(diff);
+    const copy = Object.assign(new PuzzleData(), structuredClone({ ...original }));
+    const a = simulate(original, new Map());
+    const b = simulate(copy, new Map());
+    if (!(copy.cells instanceof Map) || !(copy.splitters instanceof Map)) roundTripOk = false;
+    if (copy.maxMirrorsHint !== original.maxMirrorsHint || copy.blindMode !== original.blindMode) roundTripOk = false;
+    if (a.beamPaths.length !== b.beamPaths.length || a.solved !== b.solved) roundTripOk = false;
+    for (const [key] of original.splitters) {
+      const [x, y] = key.split(",").map(Number);
+      if (JSON.stringify(copy.splitterExits({ x, y })) !== JSON.stringify(original.splitterExits({ x, y }))) roundTripOk = false;
+    }
+  }
+  check("Worker veri aktarımı: kopyalanıp geri kurulan bulmaca aynı davranıyor (4 zorluk)", roundTripOk);
 }
 
 console.log(failures === 0 ? "\nTÜM TESTLER GEÇTİ" : `\n${failures} TEST BAŞARISIZ`);

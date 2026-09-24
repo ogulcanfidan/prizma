@@ -35,6 +35,53 @@ function getAdMob() {
   return plugins && plugins.AdMob ? plugins.AdMob : null;
 }
 
+// --- Kullanıcı onayı (UMP / GDPR) ------------------------------------------
+// Google, AdMob kullanan uygulamaların AB/İngiltere'deki kullanıcılara kişisel
+// veri kullanımı için bir onay formu göstermesini ZORUNLU tutuyor; onay akışı
+// olmadan hem politika ihlali oluşur hem de bu bölgelerde reklam geliri ciddi
+// düşer. UMP SDK'sı, kullanıcının bölgesine göre formun GEREKİP gerekmediğine
+// KENDİSİ karar verir — AB dışındaki kullanıcıya hiçbir şey gösterilmez, yani
+// bu akış Türkiye'deki oyuncu için görünmez.
+//
+// requestConsentInfo() + (gerekiyorsa) showConsentForm() reklam YÜKLENMEDEN
+// ÖNCE, initialize()'dan hemen sonra bir kez çalışır. Hata olursa (eski plugin
+// sürümü, ağ yok vb.) sessizce devam edilir — reklamsızlık oyunu bozmaz.
+let consentDone = false;
+async function ensureConsent(AdMob) {
+  if (consentDone) return;
+  consentDone = true;
+  if (!AdMob.requestConsentInfo) {
+    console.warn("ads.js: bu AdMob plugin sürümünde UMP onay API'si yok — onay akışı atlandı");
+    return;
+  }
+  try {
+    const info = await AdMob.requestConsentInfo();
+    // status "REQUIRED" ise kullanıcı onay bekliyor demektir.
+    if (info && info.isConsentFormAvailable && String(info.status).toUpperCase() === "REQUIRED") {
+      await AdMob.showConsentForm();
+    }
+  } catch (e) {
+    console.warn("ads.js: onay akışı tamamlanamadı", e);
+  }
+}
+
+// Ayarlar ekranındaki "Reklam tercihleri" için: kullanıcı onayını sonradan
+// değiştirmek isterse formu yeniden açar. Form yoksa/bölge gerektirmiyorsa
+// false döner (main.js bu durumda kısa bir bilgi mesajı gösterir).
+export async function showAdPreferences() {
+  const AdMob = await ensureInit();
+  if (!AdMob || !AdMob.showConsentForm) return false;
+  try {
+    const info = await AdMob.requestConsentInfo();
+    if (!info || !info.isConsentFormAvailable) return false;
+    await AdMob.showConsentForm();
+    return true;
+  } catch (e) {
+    console.warn("ads.js: reklam tercihleri açılamadı", e);
+    return false;
+  }
+}
+
 let initialized = false;
 async function ensureInit() {
   const AdMob = getAdMob();
@@ -46,6 +93,7 @@ async function ensureInit() {
   } catch (e) {
     console.warn("ads.js: AdMob başlatılamadı", e);
   }
+  await ensureConsent(AdMob);
   return AdMob;
 }
 

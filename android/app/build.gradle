@@ -49,8 +49,43 @@ android {
         // kullanıcıya alert() ile gösterdiği fark edildi — bu satır kaldırıldı,
         // ama düzeltme cap sync + build'den sonra yapıldığı için 8 numaralı
         // AAB'de hâlâ mevcut. Temiz bir sürüm için 9'a çekildi; versionName 1.8.
-        versionCode 9
-        versionName "1.8"
+        // Leaderboard tanı (debug) kodu leaderboard.js/PlayGamesPlugin.java/
+        // MainActivity.java'dan temizlendi, ayrıca AndroidManifest.xml'e
+        // SCHEDULE_EXACT_ALARM izni eklendi ("hak dolunca bildirim gelmiyor"
+        // hatasının kök nedenlerinden biri — Android 12+'da bu izin
+        // olmadan planlanan bildirimler exact çalışmıyor). Yeni bir
+        // AAB/APK gerektiriyor — 10'a çekildi; versionName 1.9.
+        // versionCode 10 kapalı test kanalına yüklendi (incelemede). Aynı
+        // AAB'yi satın alma (IAP) testi için hızlıca dahili test kanalına da
+        // yüklemeye çalışırken Play Console "10 sürüm kodu daha önce
+        // kullanıldı" dedi — bir track'te kullanılan versionCode başka bir
+        // track'e de yüklenemiyor, her yükleme (hangi kanal olursa olsun)
+        // kendi benzersiz versionCode'unu istiyor. İçerik aynı olduğu için
+        // versionName sabit kaldı, sadece 11'e çekildi.
+        // Satın alma + sıralama hatalarını teşhis etmek için Capacitor'ın JS
+        // konsol loglarını release derlemede de Logcat'e basmasını sağlayan
+        // capacitor.config.json > android.loggingBehavior:"production" eklendi
+        // (varsayılanı "debug" idi — bu, sadece debug/Run derlemelerinde log
+        // basar, imzalı/release derlemelerde SESSİZCE hiç log üretmez; "hem
+        // satın alma hem sıralama loglarda hiç iz bırakmıyor" bilmecesinin
+        // asıl sebebi buydu). Yeni bir AAB gerektiriyor — 12'ye çekildi.
+        //
+        // build.gradle dosyası bir noktada (muhtemelen build klasörünü
+        // silerken uzantılar gizli olduğu için "build" adında görünen bu
+        // dosyayla "build" klasörü karıştırıldı) yanlışlıkla silindi —
+        // Android Studio'da "Generate App Bundles or APKs" ve "Analyze
+        // APK..." menüleri bu yüzden pasif/tıklanamaz kalıyordu (Gradle app
+        // modülünü tanıyamıyordu). Dosya, önceki (versionCode 12) haliyle
+        // birebir yeniden oluşturuldu. Ardından yeni bir sürüm için
+        // versionCode 13'e, versionName 2.0'a çekildi.
+        // versionCode 13 (2.0) kapalı test kanalına yayınlandı. Sonraki sürüm:
+        // bulmaca üretimi Web Worker'a taşındı (ekran donması bitti), günlük
+        // bulmaca + seri, ipucu, geri al, titreşim, renk körlüğü modu,
+        // Play Games başarıları ve bulut kayıt (Snapshots) eklendi; reklam
+        // onayı (UMP), gizlilik politikası bağlantısı ve "satın almayı geri
+        // yükle" ile yayın gereksinimleri tamamlandı. 14'e çekildi; 2.1.
+        versionCode 14
+        versionName "2.1"
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
         aaptOptions {
              // Files and dirs to omit from the packaged assets dir, modified to accommodate modern web apps.

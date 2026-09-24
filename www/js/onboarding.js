@@ -133,7 +133,7 @@ function puzzle6Splitter() {
   p.tutorialKey = "onb.p6.tutorial";
   p.maxMirrorsHint = 1;
   p.addSource({ x: 0, y: 4 }, Dir.UP, COLOR_BLUE);
-  p.addSplitter({ x: 2, y: 2 }, true); // düz devam + sağa (aşağı) dön
+  p.addSplitter({ x: 2, y: 2 }, [Dir.RIGHT, Dir.DOWN]); // sağa + aşağı
   p.addTarget({ x: 4, y: 2 }, COLOR_BLUE);
   p.addTarget({ x: 2, y: 4 }, COLOR_BLUE);
   return p;

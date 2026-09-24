@@ -20,6 +20,10 @@ export function simulate(puzzle, mirrorPlacements) {
 
   const beamPaths = [];
   const queue = [];
+  // Mutlak çıkışlı splitter'da, çıkış koluna geri dönen bir ışın aynı kolu
+  // tekrar tekrar üretip sonsuz döngüye girebilir — her (splitter, çıkış
+  // yönü, renk) üçlüsü yalnızca BİR kez yayılır (tekrarı hiçbir şey katmaz).
+  const splitterEmitted = new Set();
   for (const s of puzzle.sources) {
     queue.push({ pos: s.pos, dir: s.dir, color: s.color, points: [s.pos], parentIndex: null });
   }
@@ -66,10 +70,14 @@ export function simulate(puzzle, mirrorPlacements) {
       // (ışın o noktada gerçekten aynı anda ikiye ayrılıyor).
       beamPaths.push({ points: [...points, nextPos], color, parentIndex });
       const myIndex = beamPaths.length - 1;
-      const branchRight = puzzle.splitters.get(posKey(nextPos));
-      const turnDir = branchRight ? turnRight(dir) : turnLeft(dir);
-      queue.push({ pos: nextPos, dir, color, points: [nextPos], parentIndex: myIndex });
-      queue.push({ pos: nextPos, dir: turnDir, color, points: [nextPos], parentIndex: myIndex });
+      // Çıkış yönleri MUTLAK (bkz. PuzzleData.addSplitter) — ışın hangi
+      // yönden girerse girsin, tahtadaki iki okun gösterdiği yönlere çıkar.
+      for (const exitDir of puzzle.splitterExits(nextPos)) {
+        const emitKey = `${posKey(nextPos)},${exitDir},${colorKey(color)}`;
+        if (splitterEmitted.has(emitKey)) continue;
+        splitterEmitted.add(emitKey);
+        queue.push({ pos: nextPos, dir: exitDir, color, points: [nextPos], parentIndex: myIndex });
+      }
     } else {
       // EMPTY ya da SOURCE: aynadan geç (varsa yön değişir), yol aynı parçada devam eder.
       let newDir = dir;
@@ -271,9 +279,7 @@ export function findMirrorPath(puzzle, startPos, startDir, goalPositions) {
 function resolveBranches(puzzle, pos, dir) {
   const cell = puzzle.getCell(pos);
   if (cell === Cell.SPLITTER) {
-    const branchRight = puzzle.splitters.get(posKey(pos));
-    const turnDir = branchRight ? turnRight(dir) : turnLeft(dir);
-    return [{ dir, cost: 0 }, { dir: turnDir, cost: 0 }];
+    return puzzle.splitterExits(pos).map((exitDir) => ({ dir: exitDir, cost: 0 }));
   }
   if (cell === Cell.TARGET) {
     return []; // başka bir hedefe çarpan ışın orada yutulur (simulate() ile tutarlı)

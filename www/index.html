@@ -26,7 +26,9 @@
         <span class="allowance-chip-count"><span id="allowance-badge-num-menu">30</span><small id="allowance-badge-max-menu">/30</small></span>
       </button>
       <div class="logo-mark" id="logo-mark"></div>
-      <div class="logo-title">PRIZMA</div>
+      <!-- Türkçe'de "Prizma"nın büyük harfi PRİZMA (noktalı İ) — noktasız
+           yazılınca "Prızma" okunuyordu. -->
+      <div class="logo-title">PRİZMA</div>
       <div class="logo-subtitle" id="menu-subtitle" data-i18n="menu.subtitle">Işığı Kır, Prizmayı Çöz.</div>
       <!-- Ana menüdeki üç birincil buton (Başla / Ne kadar iyisin? / Eğitimi
            Tekrar Oyna) görsel tutarlılık için aynı --accent-cyan vurgusunu
@@ -37,8 +39,21 @@
            ayrıştırılmıştır. -->
       <div class="menu-actions">
         <button class="btn primary" id="btn-play" style="--accent: var(--accent-cyan)">BAŞLA</button>
-        <button class="btn primary" id="btn-stats" style="--accent: var(--accent-cyan)" data-i18n="menu.stats">Ne kadar iyisin?</button>
-        <button class="btn primary" id="btn-egitim" style="--accent: var(--accent-violet)" hidden data-i18n="menu.replay">Eğitimi Tekrar Oyna</button>
+        <button class="btn primary" id="btn-campaign" style="--accent: var(--accent-violet)" hidden>
+          <span class="daily-main" data-i18n="menu.campaign">Bölümler</span>
+          <span class="daily-sub" id="campaign-sub"></span>
+        </button>
+        <button class="btn primary daily-btn" id="btn-daily" style="--accent: var(--accent-amber)" hidden>
+          <span class="daily-main" data-i18n="menu.daily">Günlük Bulmaca</span>
+          <span class="daily-sub" id="daily-sub"></span>
+        </button>
+        <!-- İkincil eylemler: oynamakla ilgili DEĞİLLER (istatistik/eğitim),
+             bu yüzden üç oyun butonuyla aynı ağırlıkta durmuyorlar — ana menü
+             beş eşit butonla kalabalık görünüyordu. -->
+        <div class="menu-secondary">
+          <button class="btn-ghost" id="btn-stats" hidden data-i18n="menu.stats">Ne kadar iyisin?</button>
+          <button class="btn-ghost" id="btn-egitim" hidden data-i18n="menu.replay">Eğitimi Tekrar Oyna</button>
+        </div>
       </div>
     </section>
 
@@ -71,13 +86,61 @@
           <span data-i18n="settings.notif">Günlük hatırlatma bildirimi</span>
           <span class="toggle" id="settings-notif-toggle"><span class="toggle-knob"></span></span>
         </button>
+        <button class="settings-toggle-row" id="settings-vibration-row">
+          <span data-i18n="settings.vibration">Titreşim</span>
+          <span class="toggle" id="settings-vibration-toggle"><span class="toggle-knob"></span></span>
+        </button>
+        <button class="settings-toggle-row" id="settings-colorblind-row">
+          <span data-i18n="settings.colorBlind">Renk körlüğü modu</span>
+          <span class="toggle" id="settings-colorblind-toggle"><span class="toggle-knob"></span></span>
+        </button>
         <div class="settings-row">
           <div class="settings-row-label">
             <span data-i18n="settings.language">Dil</span>
           </div>
           <select id="settings-language" class="lang-select"></select>
         </div>
+        <button class="settings-link-row" id="settings-restore">
+          <span data-i18n="settings.restore">Satın almayı geri yükle</span>
+          <span class="settings-link-chevron">›</span>
+        </button>
+        <button class="settings-link-row" id="settings-ad-prefs">
+          <span data-i18n="settings.adPrefs">Reklam tercihleri</span>
+          <span class="settings-link-chevron">›</span>
+        </button>
+        <div class="settings-row settings-version-row" id="settings-version-row" hidden>
+          <div class="settings-row-label">
+            <span data-i18n="settings.version">Sürüm</span>
+            <span class="settings-row-value" id="settings-version-value">—</span>
+          </div>
+        </div>
+        <button class="settings-link-row" id="settings-privacy" hidden>
+          <span data-i18n="settings.privacy">Gizlilik Politikası</span>
+          <span class="settings-link-chevron">›</span>
+        </button>
       </div>
+    </section>
+
+    <!-- Bölümler (kampanya) -->
+    <section id="screen-campaign" class="screen" hidden>
+      <div class="atmosphere"></div>
+      <div class="top-bar">
+        <button class="btn-back-icon" id="campaign-back" aria-label="Geri">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M15 5 8 12l7 7"/></svg>
+        </button>
+        <div class="title" data-i18n="menu.campaign">Bölümler</div>
+        <button class="allowance-chip" id="allowance-badge-campaign" aria-label="Bulmaca hakkı">
+          <span class="allowance-chip-icon">
+            <svg viewBox="0 0 24 24" fill="currentColor"><path d="M13 3 5 14h5.4L9.4 21 19 9h-6.1L13 3Z"/></svg>
+          </span>
+          <span class="allowance-chip-count"><span id="allowance-badge-num-campaign">30</span><small id="allowance-badge-max-campaign">/30</small></span>
+        </button>
+      </div>
+      <div class="campaign-progress" id="campaign-progress"></div>
+      <!-- Çözülmüş bölümlerin en iyi sürelerinin toplamı. Hiç bölüm
+           çözülmemişse gizlenir (bkz. main.js → showCampaign). -->
+      <div class="campaign-total" id="campaign-total" hidden></div>
+      <div class="level-grid" id="level-grid"></div>
     </section>
 
     <!-- Zorluk Seçimi -->
@@ -106,15 +169,24 @@
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M15 5 8 12l7 7"/></svg>
         </button>
         <div class="title" data-i18n="menu.stats">Ne kadar iyisin?</div>
-        <!-- Sıralama butonu, geri okuyla aynı nötr .btn-back-icon stili
-             yerine .allowance-chip ile aynı "cam panel rozeti" deseninde,
-             mor (--accent-violet) vurgulu, ikon + metinli bir chip olarak
-             tasarlandı — bu sayede daha görünür ve amacı net oluyor. -->
+        <div style="width:40px"></div>
+      </div>
+      <!-- Sıralama ve Başarılar, .allowance-chip ile aynı "cam panel rozeti"
+           deseninde mor vurgulu chip'ler. Üst barda başlığın yanında
+           durduklarında dar ekranda başlığı üç satıra bölüyorlardı; artık
+           başlığın ALTINDA kendi satırlarındalar. -->
+      <div class="stats-chip-row">
         <button class="leaderboard-chip" id="btn-leaderboard" aria-label="Sıralama">
           <span class="leaderboard-chip-icon">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M8 21h8M12 17v4M7 4h10v5a5 5 0 0 1-10 0V4Z"/><path d="M7 6H4a1 1 0 0 0-1 1c0 2.5 1.8 4.5 4.2 4.9M17 6h3a1 1 0 0 1 1 1c0 2.5-1.8 4.5-4.2 4.9"/></svg>
           </span>
           <span class="leaderboard-chip-text" data-i18n="stats.leaderboard">Sıralama</span>
+        </button>
+        <button class="leaderboard-chip" id="btn-achievements" aria-label="Başarılar">
+          <span class="leaderboard-chip-icon">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="9" r="5"/><path d="m8.5 13.5-1 7.5 4.5-2.5 4.5 2.5-1-7.5"/></svg>
+          </span>
+          <span class="leaderboard-chip-text" data-i18n="stats.achievements">Başarılar</span>
         </button>
       </div>
       <!-- Özet kartları + zorluk listesi, üst ve alt boşluğun dengeli
@@ -139,10 +211,19 @@
       </div>
       <div class="tutorial-text" id="game-tutorial"></div>
       <div class="board-center">
-        <div class="board-frame" id="board-frame"></div>
+        <div class="board-frame" id="board-frame">
+          <div class="board-preparing" id="board-preparing" hidden>
+            <div class="board-preparing-spinner"></div>
+            <span data-i18n="game.preparing">Bulmaca hazırlanıyor…</span>
+          </div>
+        </div>
       </div>
       <div class="bottom-bar">
-        <button class="btn small" id="game-reset" style="--accent: var(--accent-cyan)" data-i18n="game.reset">Sıfırla</button>
+        <div class="tool-row">
+          <button class="btn small" id="game-reset" style="--accent: var(--accent-cyan)" data-i18n="game.reset">Sıfırla</button>
+          <button class="btn small" id="game-undo" style="--accent: var(--accent-cyan)" data-i18n="game.undo" disabled>Geri Al</button>
+          <button class="btn small" id="game-hintbtn" style="--accent: var(--accent-cyan)" data-i18n="game.hintBtn">İpucu</button>
+        </div>
         <div class="hint-text" id="game-hint">Ayna hakkı: 0</div>
       </div>
       <div class="fire-row">
@@ -153,8 +234,10 @@
 
       <div class="win-overlay" id="win-overlay" hidden>
         <div class="win-panel panel" style="--accent: var(--accent-cyan)" id="win-panel">
+          <div class="win-burst" id="win-burst" aria-hidden="true"></div>
           <div class="win-title" data-i18n="win.solved">Çözüldü!</div>
           <div class="win-time" id="win-time">Süre: 00:00</div>
+          <div class="win-extra" id="win-extra" hidden></div>
           <button class="btn primary" id="win-next" style="--accent: var(--accent-cyan)">Sıradaki</button>
         </div>
       </div>
@@ -172,6 +255,20 @@
         </div>
       </div>
     </section>
+
+    <!-- Tüm bölümler tamamlandı ekranı: 60/60 olunca son bölümün kazanma
+         ekranındaki butona basınca listeye dönmek yerine bu gösterilir
+         (bkz. main.js → winNextBtn). Sadece kutlama değil, toplam süreyi de
+         gösterir — tekrar oynayıp rekoru düşürmek için tek sebep bu. -->
+    <div class="win-overlay" id="campaign-done-overlay" hidden>
+      <div class="win-panel panel" style="--accent: var(--accent-cyan)" id="campaign-done-panel">
+        <div class="win-burst" id="campaign-done-burst" aria-hidden="true"></div>
+        <div class="win-title" data-i18n="campaign.allDone.title">Tüm Bölümler Tamamlandı!</div>
+        <div class="win-time" id="campaign-done-sub"></div>
+        <div class="win-extra" id="campaign-done-extra"></div>
+        <button class="btn primary" id="campaign-done-close" style="--accent: var(--accent-cyan)" data-i18n="campaign.allDone.close">BÖLÜMLERE DÖN</button>
+      </div>
+    </div>
 
     <!-- Hak popup'ı: hem hak biterken hem de rozete proaktif dokununca açılır -->
     <div class="win-overlay" id="allowance-overlay" hidden>

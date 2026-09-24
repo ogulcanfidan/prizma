@@ -15,8 +15,8 @@
 // Godot scripts/BoardView.gd dosyasının web/DOM+SVG karşılığı (etkileşim
 // modeli Godot sürümünden bilinçli olarak farklılaştırıldı).
 
-import { Cell, Dir, MirrorType, reflect, turnLeft, turnRight, posKey } from "./celltypes.js";
-import { simulate, findMirrorPath } from "./solver.js";
+import { Cell, Dir, MirrorType, posKey } from "./celltypes.js";
+import { simulate } from "./solver.js";
 import { BOARD, colorToHex } from "./theme.js";
 
 const CELL = 64; // SVG viewBox birimi
@@ -194,21 +194,75 @@ function sourceIcon(x, y, colorHex, dir) {
   </g>`;
 }
 
+// --- Renk körlüğü modu ------------------------------------------------------
+// Oyunun tamamı renk ayırt etmeye dayanıyor (kırmızı/yeşil/mavi ışınlar ve
+// aynı renkteki hedefler) — kırmızı-yeşil renk körlüğü erkeklerin yaklaşık
+// %8'inde görülüyor, yani renk TEK BAŞINA yeterli bir işaret değil. Bu mod
+// açıkken hedef ve kaynakların üstüne renge EK olarak bir şekil rozeti
+// çizilir: ● kırmızı, ▲ yeşil, ■ mavi; karışımlar bunların birleşimi olan
+// çok parçalı rozetlerle gösterilir (beyaz = üçü birden).
+let colorBlindMode = false;
+
+export function setColorBlindMode(on) {
+  colorBlindMode = !!on;
+}
+
+// Bir rengin hangi ana bileşenleri taşıdığını küçük şekillerle gösterir.
+// Rozet, kürenin ORTASINA çizilir (küre rengiyle kontrast olsun diye koyu
+// zemin + beyaz şekil).
+function colorGlyph(x, y, color, scale = 1, fill = "#0A0D18") {
+  if (!colorBlindMode || !color) return "";
+  const parts = [];
+  if (color.r) parts.push("dot");
+  if (color.g) parts.push("tri");
+  if (color.b) parts.push("sq");
+  if (parts.length === 0) return "";
+  const a = (CELL / 52) * scale;
+  const s = 3.1 * a; // tek şeklin yarı boyu
+  const gap = 8 * a;
+  const startX = x - (gap * (parts.length - 1)) / 2;
+  const shapes = parts
+    .map((p, i) => {
+      const cx = startX + i * gap;
+      if (p === "dot") return `<circle cx="${cx}" cy="${y}" r="${s * 0.95}" fill="${fill}"/>`;
+      if (p === "tri") return `<path d="M${cx},${y - s} L${cx + s},${y + s * 0.8} L${cx - s},${y + s * 0.8} Z" fill="${fill}"/>`;
+      return `<rect x="${cx - s * 0.85}" y="${y - s * 0.85}" width="${s * 1.7}" height="${s * 1.7}" rx="${0.6 * a}" fill="${fill}"/>`;
+    })
+    .join("");
+  return shapes;
+}
+
+// Kaynaklar için: rozeti okunur kılan koyu şeridin üstünde çizer.
+function colorGlyphBadge(x, y, color) {
+  if (!colorBlindMode || !color) return "";
+  const glyph = colorGlyph(x, y, color, 0.8, "#EDEFF7");
+  if (!glyph) return "";
+  const n = (color.r ? 1 : 0) + (color.g ? 1 : 0) + (color.b ? 1 : 0);
+  const w = CELL * (0.16 + 0.13 * n);
+  const h = CELL * 0.17;
+  return `<rect x="${x - w / 2}" y="${y - h / 2}" width="${w}" height="${h}" rx="${h / 2}" fill="#0A0D18" opacity="0.85"/>${glyph}`;
+}
+
 // Hedef: dış yuva halkası + dolu çekirdek + highlight. lit=true iken hedefin rengiyle parlar.
 // unlit (ateşlenmeden önceki / yanlış sonuçtaki) hâlde de gereken renk NET okunmalı
 // (hedef kürelerin renginin belirgin olmaması sorunu üzerine bu okunabilirlik güçlendirildi).
-function targetIcon(x, y, colorHex, lit) {
+function targetIcon(x, y, colorHex, lit, color) {
   const a = CELL / 52;
+  const glyph = colorGlyph(x, y, color);
   if (lit) {
     return `<circle cx="${x}" cy="${y}" r="${18 * a}" fill="none" stroke="${BOARD.wallStroke}" stroke-width="2"/>
       <circle cx="${x}" cy="${y}" r="${18 * a}" fill="none" stroke="${colorHex}" stroke-width="1.4" opacity="0.55"/>
       <circle cx="${x}" cy="${y}" r="${13 * a}" fill="${colorHex}" opacity="0.28" filter="url(#nglow)"/>
       <circle cx="${x}" cy="${y}" r="${9.5 * a}" fill="${colorHex}"/>
-      <ellipse cx="${x - 3.2 * a}" cy="${y - 3.2 * a}" rx="${3 * a}" ry="${2 * a}" fill="#FFFFFF" opacity="0.75"/>`;
+      <ellipse cx="${x - 3.2 * a}" cy="${y - 3.2 * a}" rx="${3 * a}" ry="${2 * a}" fill="#FFFFFF" opacity="0.75"/>
+      ${glyph}`;
   }
-  return `<circle cx="${x}" cy="${y}" r="${18 * a}" fill="none" stroke="${BOARD.wallStroke}" stroke-width="2"/>
-    <circle cx="${x}" cy="${y}" r="${18 * a}" fill="none" stroke="${colorHex}" stroke-width="1.8" opacity="0.85"/>
-    <circle cx="${x}" cy="${y}" r="${9.5 * a}" fill="${colorHex}" opacity="0.4"/>`;
+  // Yanmamış hedef: tam doygun renkte kalın halka + tam renkli (ama parlamasız,
+  // yanmış hâlden küçük) çekirdek — gereken renk ilk bakışta okunur, yanmış
+  // hâlden de parlama/büyüklük farkıyla ayrılır.
+  return `<circle cx="${x}" cy="${y}" r="${18 * a}" fill="${BOARD.bgTo}" stroke="${colorHex}" stroke-width="${3 * a}"/>
+    <circle cx="${x}" cy="${y}" r="${9.5 * a}" fill="${colorHex}" opacity="0.9"/>
+    ${glyph}`;
 }
 
 // Bir çıkış yönünü gösteren, halka/şeklin hemen dışına taşan ince ok ucu —
@@ -246,49 +300,31 @@ function portalIcon(x, y, colorHex, exitDir) {
 // exitDirs: bu splitter'dan ışının hangi İKİ yöne ayrılacağını gösteren
 // ok(lar) — portalin exitDir okuyla AYNI görsel dil (bkz. exitArrowGlyph).
 //
-// Önceki tasarımda splitter'a eklenen ↻/↺ rozeti SOYUTTU (gelen ışının
-// MUTLAK yönünden bağımsız, sadece "dönüş hissi" veren bir rotasyon glifiydi)
-// — hangi yöne gittiğini göstermediği için oyuncu için okunaksız/alakasız
-// kalıyordu. Artık computeSplitterHintDirs() (aşağıda) ile bulmacanın KENDİ
-// çözümünün varsaydığı GERÇEK (mutlak) varış yönünü solver.js →
-// findMirrorPath ile hesaplayıp buradan İKİ SOMUT ok yönü üretiliyor — tıpkı
-// portaldaki gibi, ama ışın oraya HENÜZ ulaşmamış olsa bile (reaktif
-// computeSplitterExitDirs'in aksine, bu HER ZAMAN bilinir).
+// exitDirs, splitter'ın MUTLAK çıkış yönleridir (bkz. PuzzleData.addSplitter):
+// ışın hangi yönden girerse girsin bu iki yöne çıkar, yani oklar hem
+// ateşlemeden önce hem sonra her zaman doğrudur.
+// Splitter'ın çıkış okları oyunun KURALIDIR (ışın hep bu iki yöne çıkar), bu
+// yüzden portal okundan belirgin biçimde büyük/kalın ve splitter renginde
+// çizilir — elmasın kenarından hücre kenarına kadar uzanır.
+function splitterArrowGlyph(dir, fromR, colorHex) {
+  const ang = DIR_ANGLE[dir] ?? 0;
+  const tip = CELL / 2 - 2;
+  const hw = CELL * 0.11;
+  return `<g transform="rotate(${ang})">
+    <path d="M${fromR},0 L${tip - 2},0" stroke="${colorHex}" stroke-width="${CELL * 0.06}" stroke-linecap="round" filter="url(#nglowSoft)"/>
+    <path d="M${tip - hw * 1.3},${-hw} L${tip},0 L${tip - hw * 1.3},${hw} Z" fill="${colorHex}" filter="url(#nglowSoft)"/>
+  </g>`;
+}
+
 function splitterIcon(x, y, colorHex, exitDirs) {
-  const s = CELL * 0.24;
+  const s = CELL * 0.26;
   const pts = `${x},${y - s} ${x + s},${y} ${x},${y + s} ${x - s},${y}`;
-  const arrows = (exitDirs || []).map((dir) => `<g transform="translate(${x} ${y})">${exitArrowGlyph(dir, s + 2)}</g>`).join("");
-  return `<polygon points="${pts}" fill="${colorHex}" opacity="0.14"/>
-    <polygon points="${pts}" fill="none" stroke="${colorHex}" stroke-width="${CELL * 0.035}" filter="url(#nglow)"/>
+  const arrows = (exitDirs || []).map((dir) => `<g transform="translate(${x} ${y})">${splitterArrowGlyph(dir, s * 0.75, colorHex)}</g>`).join("");
+  return `<polygon points="${pts}" fill="${colorHex}" opacity="0.22"/>
+    <polygon points="${pts}" fill="none" stroke="${colorHex}" stroke-width="${CELL * 0.05}" filter="url(#nglow)"/>
     <line x1="${x - s * 0.55}" y1="${y - s * 0.55}" x2="${x + s * 0.55}" y2="${y + s * 0.55}" stroke="#FFFFFF" stroke-width="${CELL * 0.025}" opacity="0.85"/>
     <circle cx="${x}" cy="${y}" r="${CELL * 0.045}" fill="#FFFFFF" filter="url(#nglowSoft)"/>
     ${arrows}`;
-}
-
-// Her splitter için, bulmacanın KENDİ çözümünün varsaydığı GERÇEK varış
-// yönünü (ve oradan iki çıkış yönünü) hesaplar — ışın durumundan tamamen
-// BAĞIMSIZ, sadece bulmaca verisinden (kaynak(lar) + sabit geometriden).
-// findMirrorPath portal/duvar/başka splitter'ları da doğru şekilde hesaba
-// katar (solver.js'te zaten genel BFS). Birden fazla kaynak varsa (şu an
-// splitter'lı bulmacalarda hep TEK kaynak var) ilk başarılı olanı kullanır.
-// Bulunamazsa (olmamalı, üretici zaten bunu garanti ediyor) o splitter için
-// ok gösterilmez — sessizce atlanır.
-function computeSplitterHintDirs(puzzle) {
-  const hints = new Map();
-  for (const [key, branchRight] of puzzle.splitters) {
-    const [xs, ys] = key.split(",").map(Number);
-    const splitterPos = { x: xs, y: ys };
-    let approach = null;
-    for (const s of puzzle.sources) {
-      approach = findMirrorPath(puzzle, s.pos, s.dir, [splitterPos]);
-      if (approach) break;
-    }
-    if (!approach) continue;
-    const straightDir = approach.dir;
-    const turnDir = branchRight ? turnRight(straightDir) : turnLeft(straightDir);
-    hints.set(key, [straightDir, turnDir]);
-  }
-  return hints;
 }
 
 // Portal başına, GERÇEK simülasyon sonucuna (this.lastResult.beamPaths) göre
@@ -313,45 +349,6 @@ function computePortalExitDirs(beamPaths, portals) {
     else if (dy === 1) dir = Dir.DOWN;
     else if (dy === -1) dir = Dir.UP;
     if (dir != null) exitDirs.set(startKey, dir);
-  }
-  return exitDirs;
-}
-
-// Düzeltilmiş bir hata: bazı durumlarda ışın, splitter'ın gösterdiği ok
-// yönlerinde gitmiyordu. KÖK NEDEN: splitterHintDirs, puzzle YÜKLENİR
-// YÜKLENMEZ bulmacanın KENDİ çözümünü VARSAYARAK (findMirrorPath ile,
-// oyuncunun aynalarından TAMAMEN BAĞIMSIZ) bir kere hesaplanıp önbelleğe
-// alınıyordu ve bir daha GÜNCELLENMİYORDU. Oysa oyuncu splitter'a giden yolu
-// KENDİ aynalarıyla (findMirrorPath'in varsaydığından FARKLI — ama eşit
-// derecede geçerli olabilecek) bir şekilde kurunca, splitter'a GERÇEKTE
-// farklı bir yönden giriyor ve gerçek çıkış yönleri de (branchRight formülü
-// YAKLAŞMA yönüne GÖRECELİ olduğu için) hint'ten sapıyordu — ok bir yönü
-// gösteriyor, ışın başka yöne gidiyordu.
-//
-// ÇÖZÜM: portallardaki AYNI mantık (computePortalExitDirs) — GERÇEK simülasyon
-// sonucundan (beamPaths) o splitter'da BAŞLAYAN parçaların ilk iki noktasından
-// gerçek çıkış yönlerini çıkar. Bir ışın splitter'a GERÇEKTEN ulaştıysa bu her
-// zaman %100 doğrudur (statik hint'in aksine asla yanlış olamaz). Işın henüz
-// oraya ulaşmadıysa (kör modda ateşlemeden önce) haritada yer almaz — o zaman
-// _render() eski statik splitterHintDirs'e (varsayılan/en iyi tahmin) düşer.
-function computeSplitterExitDirsFromBeams(beamPaths, splitters) {
-  const exitDirs = new Map(); // "x,y" -> [dir, dir]
-  for (const beam of beamPaths) {
-    const pts = beam.points;
-    if (pts.length < 2) continue;
-    const startKey = posKey(pts[0]);
-    if (!splitters.has(startKey)) continue;
-    const dx = pts[1].x - pts[0].x;
-    const dy = pts[1].y - pts[0].y;
-    let dir = null;
-    if (dx === 1) dir = Dir.RIGHT;
-    else if (dx === -1) dir = Dir.LEFT;
-    else if (dy === 1) dir = Dir.DOWN;
-    else if (dy === -1) dir = Dir.UP;
-    if (dir == null) continue;
-    const arr = exitDirs.get(startKey) || [];
-    if (!arr.includes(dir)) arr.push(dir);
-    exitDirs.set(startKey, arr);
   }
   return exitDirs;
 }
@@ -382,9 +379,11 @@ export class BoardView {
     this._revealMs = REVEAL_MS; // bkz. REVEAL_MS_GAMEPLAY notu yukarıda — setPuzzle() günceller
     this._liveRevealMs = 0; // bkz. LIVE_REVEAL_MS_ONBOARDING notu yukarıda — setPuzzle() günceller
     this.mirrorPlacements = new Map(); // "x,y" -> MirrorType
+    // Geri al (undo): her değişiklikten ÖNCEKİ yerleşim anlık görüntüleri.
+    // Sığ kopya yeterli (Map<string, MirrorType> — değerler ilkel).
+    this.history = [];
     this.maxMirrors = 0; // ayna hakkı (puzzle.maxMirrorsHint)
     this.lastResult = { beamPaths: [], targetHits: new Map(), solved: false };
-    this.splitterHintDirs = new Map(); // "x,y" -> [dir1, dir2] (bkz. setPuzzle)
 
     // (isSolved, meta) => void — meta.fired true ise bu bir "Işını Çalıştır"
     // sonucu (kör mod), false ise canlı moddaki anlık bir güncelleme sonucu.
@@ -428,13 +427,9 @@ export class BoardView {
     // (anında, orijinal davranış — sonsuz mod değişmedi).
     this._liveRevealMs = !this.blind && opts.onboardingReveal ? LIVE_REVEAL_MS_ONBOARDING : 0;
     this.mirrorPlacements = new Map();
+    this.history = [];
     this.maxMirrors = Math.max(0, puzzle.maxMirrorsHint ?? 0);
     this.lastResult = { beamPaths: [], targetHits: new Map(), solved: false };
-    // Splitter'ların HER ZAMAN görünen yön okları — ışın durumundan bağımsız
-    // olduğu için puzzle başına BİR KEZ hesaplanıp önbelleğe alınır (her
-    // _render() çağrısında yeniden hesaplamaya gerek yok, bkz.
-    // computeSplitterHintDirs notu).
-    this.splitterHintDirs = computeSplitterHintDirs(puzzle);
     this.svg.setAttribute("viewBox", `0 0 ${puzzle.gridSize.x * CELL} ${puzzle.gridSize.y * CELL}`);
     this.wrapperEl.style.aspectRatio = `${puzzle.gridSize.x} / ${puzzle.gridSize.y}`;
     if (this.blind) {
@@ -459,8 +454,27 @@ export class BoardView {
     return this.lastResult.solved;
   }
 
+  // Son ayna hareketini geri alır (ekleme, döndürme ve kaldırma dahil).
+  undo() {
+    if (this._busy || this.history.length === 0) return false;
+    this.mirrorPlacements = this.history.pop();
+    if (this.blind) {
+      this._render(0);
+      this._notifyAllowance();
+    } else {
+      this._liveResimulate();
+      this._notifyAllowance();
+    }
+    return true;
+  }
+
+  get canUndo() {
+    return this.history.length > 0 && !this._busy;
+  }
+
   resetMirrors() {
     if (this._busy) return;
+    if (this.mirrorPlacements.size > 0) this.history.push(new Map(this.mirrorPlacements));
     this.mirrorPlacements = new Map();
     this.lastResult = { beamPaths: [], targetHits: new Map(), solved: false };
     if (this.blind) {
@@ -518,6 +532,23 @@ export class BoardView {
     this._rafId = requestAnimationFrame(step);
   }
 
+  // İpucu: çözümden gelen TEK bir aynayı tahtaya koyar (bkz. main.js →
+  // ipucu akışı). Oyuncunun o hücredeki yanlış aynası varsa düzeltir.
+  // Geri alınabilir (history'ye yazılır).
+  applyHintMirror(key, mirrorType) {
+    if (this._busy) return false;
+    if (!this.mirrorPlacements.has(key) && this.remainingMirrors <= 0) return false;
+    this.history.push(new Map(this.mirrorPlacements));
+    this.mirrorPlacements.set(key, mirrorType);
+    if (this.blind) {
+      this._render(0);
+    } else {
+      this._liveResimulate();
+    }
+    this._notifyAllowance();
+    return true;
+  }
+
   _handlePointer(e) {
     if (!this.puzzle || this._busy) return;
     const rect = this.svg.getBoundingClientRect();
@@ -533,6 +564,7 @@ export class BoardView {
     if (this.puzzle.fixedMirrors.has(key)) return;
 
     let added = true;
+    const before = new Map(this.mirrorPlacements);
     if (!this.mirrorPlacements.has(key)) {
       if (this.remainingMirrors <= 0) return; // ayna hakkı bitti — yeni ayna eklenemez
       this.mirrorPlacements.set(key, MirrorType.FORWARD_SLASH);
@@ -542,6 +574,7 @@ export class BoardView {
       this.mirrorPlacements.delete(key);
       added = false;
     }
+    this.history.push(before);
     if (this.onPlace) this.onPlace(added);
 
     if (this.blind) {
@@ -576,6 +609,7 @@ export class BoardView {
         } else {
           this._failTimeout = setTimeout(() => {
             this.mirrorPlacements = new Map();
+            this.history = [];
             this.lastResult = { beamPaths: [], targetHits: new Map(), solved: false };
             this._render(0);
             this._notifyAllowance();
@@ -629,14 +663,9 @@ export class BoardView {
       parts.push(portalIcon(xs * CELL + CELL / 2, ys * CELL + CELL / 2, BOARD.portal, portalExitDirs.get(key) ?? null));
     }
 
-    // Gerçek ışın o splitter'a ulaştıysa (beamPaths'ten türetilen
-    // splitterLiveDirs) HER ZAMAN onu göster; ulaşmadıysa (kör modda henüz
-    // ateşlenmemiş) eski statik tahmine (splitterHintDirs) düş.
-    const splitterLiveDirs = computeSplitterExitDirsFromBeams(this.lastResult.beamPaths, p.splitters);
-    for (const [key] of p.splitters) {
+    for (const [key, exitDirs] of p.splitters) {
       const [xs, ys] = key.split(",").map(Number);
-      const dirs = splitterLiveDirs.get(key) ?? this.splitterHintDirs.get(key);
-      parts.push(splitterIcon(xs * CELL + CELL / 2, ys * CELL + CELL / 2, BOARD.splitter, dirs));
+      parts.push(splitterIcon(xs * CELL + CELL / 2, ys * CELL + CELL / 2, BOARD.splitter, exitDirs));
     }
 
     for (const [key, mirrorType] of p.fixedMirrors) {
@@ -651,11 +680,14 @@ export class BoardView {
     for (const t of p.targets) {
       const hit = this.lastResult.targetHits.get(posKey(t.pos));
       const lit = hit && hit.r === t.color.r && hit.g === t.color.g && hit.b === t.color.b;
-      parts.push(targetIcon(t.pos.x * CELL + CELL / 2, t.pos.y * CELL + CELL / 2, colorToHex(t.color), lit));
+      parts.push(targetIcon(t.pos.x * CELL + CELL / 2, t.pos.y * CELL + CELL / 2, colorToHex(t.color), lit, t.color));
     }
 
     for (const s of p.sources) {
       parts.push(sourceIcon(s.pos.x * CELL + CELL / 2, s.pos.y * CELL + CELL / 2, colorToHex(s.color), s.dir));
+      // Kaynakta rozet, üçgen simgenin üstüne binmesin diye hücrenin ALT
+      // KENARINA, küçük ve koyu bir şeride çizilir.
+      parts.push(colorGlyphBadge(s.pos.x * CELL + CELL / 2, s.pos.y * CELL + CELL - CELL * 0.17, s.color));
     }
 
     this.svg.innerHTML = parts.join("");
