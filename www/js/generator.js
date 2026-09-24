@@ -32,8 +32,8 @@
 //      SADECE BİRİ (source[0]) splitter'a zorunlu bir ara-durak (waypoint)
 //      olarak yönlendirilir (trySplitterBeam'deki AYNI kanıt DEĞİŞMEDEN
 //      korunur), splitter'ın iki dalı + kalan bağımsız kaynak(lar) hedeflere
-//      öyle dağıtılır ki toplam hedef sayısı TAM OLARAK istenen sayıda kalır
-//      (bkz. tryComplexBeam üstündeki uzun not).
+//      dağıtılır; toplam hedef sayısı numSources+1 olur (bkz.
+//      tryComplexBeam üstündeki not).
 //   3) Eski `portalChance`/`splitterChance`/`bothChance` olasılıkları artık
 //      "N turdan M'i" oranlarına BİREBİR karşılık gelecek şekilde yeniden
 //      kalibre edildi (örn. Zor: bothChance=0.4 ⇒ 10 turun 4'ü, kalan 0.6'nın
@@ -349,7 +349,16 @@ function jointSolve(puzzle, legs) {
 // "güvenli tarafta kal -> reddet" anlamına geliyor (bkz. hasBypassSolution
 // içindeki r.timedOut kontrolleri) — bu davranış değişmedi, sadece arama
 // daha erken pes edip bir sonraki adaya geçiyor.
-const BYPASS_SEARCH_TIME_MS = 200;
+let BYPASS_SEARCH_TIME_MS = 200;
+
+// GÜNLÜK BULMACA (deterministik mod) — günlük bulmaca HER CİHAZDA AYNI
+// çıkmalı. Normalde üretim süre bütçelerine bağlı (kaç aday denendiği,
+// baypas aramasının süreye takılıp takılmadığı cihaz hızına göre değişir),
+// yani aynı tohum farklı cihazlarda farklı bulmaca verebilir. Deterministik
+// modda: süre bütçesi uygulanmaz, aday sayısı sabittir, zorluk puanlaması ve
+// ayna minimizasyonu (ikisi de süre ölçer) atlanır, baypas aramasına ise
+// pratikte dolmayacak kadar uzun sabit bir süre verilir.
+const DETERMINISTIC_BYPASS_MS = 10000;
 
 function hasBypassSolution(p, maxMirrors) {
   const portalCells = new Set();
@@ -430,7 +439,7 @@ function buildBlockedPuzzle(p, removeCells) {
 // sağlayıcı->hedef eşleşmelerini (üretecin TASARLADIĞI TEK eşleşme DEĞİL —
 // kaynaklar/kollar arasında olası tüm ÇAPRAZLAMALARI) dener.
 function portalBypassSplitterKept(p, maxMirrors, portalCells) {
-  const [splitterKey, branchRight] = [...p.splitters.entries()][0];
+  const [splitterKey, splitterExitDirs] = [...p.splitters.entries()][0];
   const [sx, sy] = splitterKey.split(",").map(Number);
   const splitterPos = { x: sx, y: sy };
   const blocked = buildBlockedPuzzle(p, portalCells);
@@ -441,11 +450,9 @@ function portalBypassSplitterKept(p, maxMirrors, portalCells) {
     const feeder = p.sources[f];
     const approach = findMirrorPath(blocked, feeder.pos, feeder.dir, [splitterPos]);
     if (!approach) continue; // bu kaynak splitter'a hiç ulaşamıyor -> besleyici olamaz
-    const straightDir = approach.dir;
-    const turnDir = branchRight ? turnRight(straightDir) : turnLeft(straightDir);
+    // Çıkış yönleri MUTLAK — besleyicinin varış yönünden bağımsız.
     const providers = [
-      { pos: splitterPos, dir: straightDir },
-      { pos: splitterPos, dir: turnDir },
+      ...splitterExitDirs.map((dir) => ({ pos: splitterPos, dir })),
       ...p.sources.filter((_, i) => i !== f).map((s) => ({ pos: s.pos, dir: s.dir })),
     ];
     const k = providers.length;
@@ -485,7 +492,9 @@ function portalBypassSplitterKept(p, maxMirrors, portalCells) {
 // var" gibi yorumlamalı). Performans: aynı anda sadece İLK "henüz karara
 // bağlanmamış" hücreye dallanan bir DFS + kalan hedeflere olan (gevşetilmiş
 // 0-1 BFS) mesafeyle alt sınır budaması kullanır.
-function existsSolutionAvoiding(puzzle, forbiddenCells, maxMirrors, timeLimitMs) {
+// opts.fixed: Map<"x,y", MirrorType> — oyuncunun zaten koyduğu, arama
+// sırasında DEĞİŞTİRİLMEYECEK aynalar (ipucu için, bkz. solveMirrors).
+function existsSolutionAvoiding(puzzle, forbiddenCells, maxMirrors, timeLimitMs, opts = {}) {
   const gx = puzzle.gridSize.x;
   const gy = puzzle.gridSize.y;
   const N = gx * gy;
@@ -503,7 +512,9 @@ function existsSolutionAvoiding(puzzle, forbiddenCells, maxMirrors, timeLimitMs)
 
   const grid = new Int8Array(N);
   const portalExit = new Int32Array(N).fill(-1);
-  const splitR = new Int8Array(N);
+  // Splitter'ın iki MUTLAK çıkış yönü (bkz. PuzzleData.addSplitter); -1 = yok.
+  const splitA = new Int8Array(N).fill(-1);
+  const splitB = new Int8Array(N).fill(-1);
   for (let y = 0; y < gy; y++) {
     for (let x = 0; x < gx; x++) {
       const key = posKey({ x, y });
@@ -518,7 +529,11 @@ function existsSolutionAvoiding(puzzle, forbiddenCells, maxMirrors, timeLimitMs)
         const e = puzzle.portals.get(key);
         portalExit[i] = e.y * gx + e.x;
       }
-      if (grid[i] === Cell.SPLITTER) splitR[i] = puzzle.splitters.get(key) ? 1 : 0;
+      if (grid[i] === Cell.SPLITTER) {
+        const exits = puzzle.splitters.get(key) || [];
+        if (exits.length > 0) splitA[i] = exits[0];
+        if (exits.length > 1) splitB[i] = exits[1];
+      }
     }
   }
   const tIdx = puzzle.targets.map((t) => t.pos.y * gx + t.pos.x);
@@ -528,6 +543,17 @@ function existsSolutionAvoiding(puzzle, forbiddenCells, maxMirrors, timeLimitMs)
 
   const dec = new Int8Array(N); // her boş hücre için: henüz karar yok / ayna yok / '/' / '\'
   let placed = 0;
+  // Sabitlenen (oyuncunun koyduğu) aynalar — dfs bunları hiç değiştirmez,
+  // çünkü partialSim yalnızca D_UNDEC hücrelerde dallanır (ipucu için).
+  if (opts.fixed) {
+    for (const [key, type] of opts.fixed) {
+      const [fx, fy] = key.split(",").map(Number);
+      const fi = fy * gx + fx;
+      if (grid[fi] !== Cell.EMPTY) continue;
+      dec[fi] = type === MirrorType.FORWARD_SLASH ? D_FS : D_BS;
+      placed++;
+    }
+  }
 
   // Kaynaklardan başlayıp, karara bağlanmamış İLK boş hücreye kadar (ya da
   // bulmaca tamamen "ölene"/tüm cephelerin durana kadar) simülasyonu ilerletir.
@@ -562,8 +588,8 @@ function existsSolutionAvoiding(puzzle, forbiddenCells, maxMirrors, timeLimitMs)
         continue;
       }
       if (c === Cell.SPLITTER) {
-        const td = splitR[j] ? (d + 1) % 4 : (d + 3) % 4;
-        for (const od of [d, td]) {
+        for (const od of [splitA[j], splitB[j]]) {
+          if (od < 0) continue;
           const sk = ((j * 4 + od) << 3) | ck;
           if (seen.has(sk)) continue;
           seen.add(sk);
@@ -637,7 +663,8 @@ function existsSolutionAvoiding(puzzle, forbiddenCells, maxMirrors, timeLimitMs)
       let b2 = -1;
       let extra = 0;
       if (c === Cell.SPLITTER) {
-        b1 = splitR[i] ? (d + 1) % 4 : (d + 3) % 4;
+        b0 = splitA[i];
+        b1 = splitB[i];
       } else if (c === Cell.EMPTY) {
         const dv = dec[i];
         if (dv === D_UNDEC) {
@@ -650,7 +677,7 @@ function existsSolutionAvoiding(puzzle, forbiddenCells, maxMirrors, timeLimitMs)
       }
       const x = i % gx;
       const y = (i / gx) | 0;
-      {
+      if (b0 >= 0) {
         const nx = x + DX[b0];
         const ny = y + DY[b0];
         if (nx >= 0 && ny >= 0 && nx < gx && ny < gy) {
@@ -727,6 +754,7 @@ function existsSolutionAvoiding(puzzle, forbiddenCells, maxMirrors, timeLimitMs)
   }
 
   let found = false;
+  let foundDec = null;
   let timedOut = false;
   let nodes = 0;
   function dfs() {
@@ -740,6 +768,7 @@ function existsSolutionAvoiding(puzzle, forbiddenCells, maxMirrors, timeLimitMs)
     if (sim.dead) return;
     if (sim.branchIdx < 0) {
       for (let s = 0; s < tIdx.length; s++) if (!colorEquals(sim.hits[s], tColor[s])) return;
+      foundDec = Int8Array.from(dec);
       found = true; // TAM bir dizilim bulundu: tüm hedefler doğru renkte, hiç yasak hücreye girilmedi
       return;
     }
@@ -761,7 +790,34 @@ function existsSolutionAvoiding(puzzle, forbiddenCells, maxMirrors, timeLimitMs)
     dec[j] = D_UNDEC;
   }
   dfs();
-  return { solved: found, timedOut };
+  return { solved: found, timedOut, nodes, dec: foundDec };
+}
+
+// İpucu için tam çözüm: bulmacanın (en fazla maxMirrors aynayla) GERÇEK bir
+// çözümünü Map<"x,y", MirrorType> olarak döner; bulunamazsa ya da süre
+// dolarsa null. fixed verilirse oyuncunun mevcut aynaları KORUNUR — çözüm
+// onların üstüne kurulur (ipucu, oyuncunun kurduğu mantığı bozmaz).
+// existsSolutionAvoiding'in dec dizisini [["x,y", MirrorType], ...] biçimine
+// çevirir (2 = "/", 3 = "\\"; bkz. D_FS/D_BS).
+function decToMirrors(dec, gx) {
+  const out = [];
+  dec.forEach((v, i) => {
+    if (v === 2) out.push([`${i % gx},${(i / gx) | 0}`, MirrorType.FORWARD_SLASH]);
+    else if (v === 3) out.push([`${i % gx},${(i / gx) | 0}`, MirrorType.BACK_SLASH]);
+  });
+  return out;
+}
+
+export function solveMirrors(puzzle, maxMirrors, timeLimitMs, fixed = null) {
+  const res = existsSolutionAvoiding(puzzle, new Set(), maxMirrors, timeLimitMs, fixed ? { fixed } : {});
+  if (!res.solved || !res.dec) return null;
+  const gx = puzzle.gridSize.x;
+  const out = new Map();
+  res.dec.forEach((v, i) => {
+    if (v === 2) out.set(`${i % gx},${(i / gx) | 0}`, MirrorType.FORWARD_SLASH);
+    else if (v === 3) out.set(`${i % gx},${(i / gx) | 0}`, MirrorType.BACK_SLASH);
+  });
+  return out;
 }
 
 // jointSolve tabanlı duvar denemesi (Map döndürür, sayı değil). Her denemede
@@ -860,6 +916,10 @@ function trySingleBeam(grid, cfg) {
   if (!merged) return null;
 
   if (merged.size < cfg.range.min || merged.size > cfg.range.max) return null;
+  // Üreticinin KENDİ çözümü bulmacayla birlikte taşınır: ipucu bunu kullanır,
+  // böylece çalışma anında (Usta'da 10-40 sn sürebilen) tam çözüm aramasına
+  // gerek kalmaz (bkz. main.js → giveHint).
+  p.solution = [...merged];
   p.maxMirrorsHint = merged.size;
   return p;
 }
@@ -943,6 +1003,10 @@ function tryMultiBeam(grid, cfg, numSources, singleTarget, opts = {}) {
   // attemptPortalJoint bu eşleşmeyi ASLA test etmiyordu. Düzeltme:
   // tryComplexBeam'deki AYNI hasBypassSolution() çağrısı buraya da eklendi.
   if (opts.addPortal && hasBypassSolution(p, merged.size)) return null; // baypas var -> bu aday elenir, generate() başka bir aday dener
+  // Üreticinin KENDİ çözümü bulmacayla birlikte taşınır: ipucu bunu kullanır,
+  // böylece çalışma anında (Usta'da 10-40 sn sürebilen) tam çözüm aramasına
+  // gerek kalmaz (bkz. main.js → giveHint).
+  p.solution = [...merged];
   p.maxMirrorsHint = merged.size;
   return p;
 }
@@ -991,7 +1055,7 @@ function trySplitterBeam(grid, cfg, opts = {}) {
   const p = new PuzzleData();
   p.gridSize = grid;
   p.addSource(emitter.pos, emitter.dir, color);
-  p.addSplitter(splitterPos, branchRight);
+  p.addSplitter(splitterPos);
   p.addTarget(t1, color);
   p.addTarget(t2, color);
 
@@ -1000,6 +1064,9 @@ function trySplitterBeam(grid, cfg, opts = {}) {
   const arrivalDir = approach.dir;
   const straightDir = arrivalDir;
   const turnDir = branchRight ? turnRight(arrivalDir) : turnLeft(arrivalDir);
+  // Tasarlanan varış yönünden türetilen iki kol, splitter'ın SABİT (mutlak)
+  // çıkış yönleri olarak kaydedilir — tahtadaki oklar tam olarak bunlardır.
+  p.setSplitterExits(splitterPos, [straightDir, turnDir]);
 
   const legsFn = () => [
     { pos: emitter.pos, dir: emitter.dir, goals: [splitterPos] },
@@ -1023,6 +1090,10 @@ function trySplitterBeam(grid, cfg, opts = {}) {
   }
 
   if (merged.size < cfg.range.min || merged.size > cfg.range.max) return null;
+  // Üreticinin KENDİ çözümü bulmacayla birlikte taşınır: ipucu bunu kullanır,
+  // böylece çalışma anında (Usta'da 10-40 sn sürebilen) tam çözüm aramasına
+  // gerek kalmaz (bkz. main.js → giveHint).
+  p.solution = [...merged];
   p.maxMirrorsHint = merged.size;
   return p;
 }
@@ -1040,14 +1111,10 @@ function trySplitterBeam(grid, cfg, opts = {}) {
 // değişmedi). Kalan (numSources-1) kaynak TAMAMEN BAĞIMSIZ bacaklar olarak
 // eklenir.
 //
-// HEDEF SAYISI (gereksinim: "N kaynak N hedef VEYA 1 hedef"):
-//  - singleTarget=true: TÜM bacaklar (splitter'ın iki dalı DAHİL) AYNI TEK
-//    hedefte buluşur (renk union'ı) — ışın tek hedef küreye götürülür.
-//  - singleTarget=false: splitter'ın düz dalı KENDİ ÖZEL hedefine gider;
-//    dönüş dalı, source[1] ile AYNI (renk karışımı) hedefi PAYLAŞIR;
-//    source[2..] (varsa) kendi özel hedeflerine gider. Bu paylaşım sayesinde
-//    toplam hedef sayısı (numSources+1 bacağa rağmen) TAM OLARAK numSources
-//    olur — "N kaynak N hedef" gereksinimiyle birebir eşleşir.
+// HEDEF SAYISI: splitter'lı bu yapıda HER ZAMAN numSources+1 hedef vardır
+// (splitter'ın iki kolu ayrı hedeflere + kalan kaynaklar kendi hedeflerine).
+// "N hedef veya 1 hedef" kuralı yalnızca splitter'sız yapılarda
+// (tryMultiBeam) geçerlidir.
 // opts.addPortal/opts.requirePortal: trySplitterBeam'deki AYNI mantık —
 // jointSolve TÜM bacakları (splitter dahil) kapsadığı için portal
 // gerekliliği doğrulaması değişikliğe gerek kalmadan aynen çalışır.
@@ -1076,7 +1143,6 @@ function tryComplexBeam(grid, cfg, numSources, singleTargetIgnored, opts = {}) {
   const emitters = randomDistinctEmitters(grid, numSources);
   if (!emitters) return null;
   const colors = emitters.map(() => PRIMARY_COLORS[rng.randiRange(0, 2)]);
-
   const emitterPositions = emitters.map((e) => e.pos);
   const splitterPos = randomPosExcluding(grid, emitterPositions);
   if (emitters.some((e) => posEquals(e.pos, splitterPos))) return null;
@@ -1087,7 +1153,7 @@ function tryComplexBeam(grid, cfg, numSources, singleTargetIgnored, opts = {}) {
   const p = new PuzzleData();
   p.gridSize = grid;
   emitters.forEach((e, i) => p.addSource(e.pos, e.dir, colors[i]));
-  p.addSplitter(splitterPos, branchRight);
+  p.addSplitter(splitterPos);
 
   // source[0] -> splitter GERÇEK varış yönü (bkz. trySplitterBeam'deki AYNI
   // teknik) — splitter'ın iki dalının (düz + dönüş) MUTLAK yönlerini belirler.
@@ -1095,17 +1161,16 @@ function tryComplexBeam(grid, cfg, numSources, singleTargetIgnored, opts = {}) {
   if (!approach) return null;
   const straightDir = approach.dir;
   const turnDir = branchRight ? turnRight(straightDir) : turnLeft(straightDir);
+  p.setSplitterExits(splitterPos, [straightDir, turnDir]);
 
-  // Tasarım gereksinimi: beyaz hedef küre varsa, o bölümdeki tüm kaynakların
-  // oraya gitmesi şart olmalı, sadece bir kısmının gitmesi yeterli değil.
-  // (singleTarget dalı KALDIRILDI, bkz. fonksiyon üstündeki not — burada
-  // hiçbir yerde renk birleşmesi/beyaz hedef YOK, bu YAPISAL olarak
-  // kasıtlı.) Splitter'ın iki kolu da (düz -> tStraight, dönüş -> tTurn)
-  // KENDİ TEK renkli (colors[0]) hedefine gidiyor — splitter'ın "matematiksel
-  // olarak gerekli" kanıtı: source[0]'ın TEK ışını, splitter olmadan bu 2
-  // hedefin ikisine BİRDEN asla ulaşamaz (bkz. dosya başındaki
-  // trySplitterBeam notu). Kalan (numSources-1) kaynağın her biri kendi
-  // bağımsız (birleşmeyen) hedefine gider.
+  // HEDEF SAYISI = numSources + 1: splitter'ın iki kolu (düz -> tStraight,
+  // dönüş -> tTurn) KENDİ tek renkli (colors[0]) hedeflerine, kalan
+  // (numSources-1) kaynağın her biri kendi bağımsız hedefine gider.
+  // Splitter'ın matematiksel olarak gerekli olduğunun kanıtı: splitter'sız
+  // her ışın en fazla BİR hedefe ulaşır; numSources ışınla numSources+1
+  // hedefin hepsi beslenemez. ("N hedef" için kollardan birinin başka bir
+  // kaynakla hedef paylaştığı renk-karışımlı varyant denendi, ama üretici
+  // Usta'da neredeyse hiç geçerli aday bulamayıp yedek bulmacaya düşüyordu.)
   const tStraight = randomPosExcluding(grid, excluded);
   excluded.push(tStraight);
   const tTurn = randomPosExcluding(grid, excluded);
@@ -1148,16 +1213,61 @@ function tryComplexBeam(grid, cfg, numSources, singleTargetIgnored, opts = {}) {
 
   if (merged.size < cfg.range.min || merged.size > cfg.range.max) return null;
   if (hasBypassSolution(p, merged.size)) return null; // baypas var -> bu aday elenir, generate() başka bir aday dener
+  // Üreticinin KENDİ çözümü bulmacayla birlikte taşınır: ipucu bunu kullanır,
+  // böylece çalışma anında (Usta'da 10-40 sn sürebilen) tam çözüm aramasına
+  // gerek kalmaz (bkz. main.js → giveHint).
+  p.solution = [...merged];
   p.maxMirrorsHint = merged.size;
   return p;
+}
+
+// Süre bütçeleri. SYNC: ana thread'de (ekran donar) çalışırken kısa tutulur.
+// BACKGROUND: Web Worker'da (bkz. generator.worker.js / puzzleService.js)
+// ekran donmadığı için çok daha cömert — daha çok aday denenir ve ayna
+// hakkı splitter'lı Zor/Usta'da da gerçek minimuma çekilebilir.
+const BUDGETS = {
+  sync: { generateMs: 1200, hardnessProbeMs: 120, minimizeStepMs: 150, minimizeBudgetMs: 450, portalOnlyCandidates: 5 },
+  background: { generateMs: 4000, hardnessProbeMs: 300, minimizeStepMs: 1500, minimizeBudgetMs: 3000, portalOnlyCandidates: 8 },
+};
+
+// Üretici maxMirrorsHint'i kendi kurduğu çözümün ayna sayısından alıyor, ama
+// bazen daha az aynalı başka bir çözüm de var (ölçüm: 40 bulmacanın 4'ünde
+// 1-2 ayna fazlası). Tam çözücüyle (k-1) aynalı bir çözüm aranır; bulunursa
+// hak düşürülüp tekrarlanır. Arama süre sınırına takılırsa (kanıtlanamadı)
+// hak OLDUĞU GİBİ bırakılır — bulmaca asla çözülemez hale gelmez.
+// Baypas güvencesi korunur: hasBypassSolution zaten "mekanikleri kullanmadan
+// ≤ eski hak" çözümü olmadığını kanıtladı, daha az ayna bunun alt kümesi.
+function minimizeMirrorHint(puzzle, deadline, stepMs) {
+  while (puzzle.maxMirrorsHint > 0) {
+    const remaining = deadline - Date.now();
+    if (remaining <= 0) return;
+    const r = existsSolutionAvoiding(puzzle, new Set(), puzzle.maxMirrorsHint - 1, Math.min(stepMs, remaining));
+    if (!r.solved) return; // ya kanıtlandı (daha azı yok) ya da süre doldu
+    puzzle.maxMirrorsHint--;
+    // Saklanan çözüm de küçülen hakka uymalı (bkz. p.solution notu).
+    if (r.dec) puzzle.solution = decToMirrors(r.dec, puzzle.gridSize.x);
+  }
 }
 
 // Ana giriş noktası: verilen zorlukta, solver-doğrulanmış bir bulmaca üretir.
 // Dönen puzzle.blindMode: bu turun "Işını Çalıştır" (kör mod) ile mi
 // oynanacağını main.js'e bildirir — splitter/portal yerleşiminden TAMAMEN
 // BAĞIMSIZ (bkz. TIER_CONFIG.specialChance notu).
-export function generate(difficulty, seedValue = -1) {
+// opts.background: true ise (Web Worker) BUDGETS.background kullanılır.
+export function generate(difficulty, seedValue = -1, opts = {}) {
   if (seedValue >= 0) rng.seed(seedValue);
+  const deterministic = !!opts.deterministic;
+  const budget = opts.background ? BUDGETS.background : BUDGETS.sync;
+  const prevBypassMs = BYPASS_SEARCH_TIME_MS;
+  if (deterministic) BYPASS_SEARCH_TIME_MS = DETERMINISTIC_BYPASS_MS;
+  try {
+    return generateInner(difficulty, opts, budget, deterministic);
+  } finally {
+    BYPASS_SEARCH_TIME_MS = prevBypassMs;
+  }
+}
+
+function generateInner(difficulty, opts, budget, deterministic) {
   const cfg = TIER_CONFIG[difficulty] || TIER_CONFIG.kolay;
   const special = (cfg.specialChance || 0) > 0 && rng.randf() < cfg.specialChance;
 
@@ -1168,7 +1278,7 @@ export function generate(difficulty, seedValue = -1) {
   // zor, "en yüksek ayna sayısı" seçimini agresif tutmak mirror sayısını
   // gereksiz şişiriyordu (ayna sayılarının çok fazla artmaması ilkesiyle
   // çelişiyordu).
-  const CANDIDATES_WANTED = cfg.candidates || 4;
+  let CANDIDATES_WANTED = cfg.candidates || 4;
   const maxAttempts = 500;
 
   // Bilinen bir performans sorunu: seviye seçildikten sonra oyun bazen kısa
@@ -1183,9 +1293,9 @@ export function generate(difficulty, seedValue = -1) {
   // İYİ adayla (veya yedek/ONBOARDING güvenlik ağıyla) devam edilir. Bu,
   // baypas KONTROLÜNÜN kendisini (doğruluğunu/güvenliğini) DEĞİŞTİRMİYOR —
   // sadece "ne kadar aday denenebilir"i zaman açısından sınırlıyor.
-  const GENERATE_DEADLINE_MS = 1200;
+  const GENERATE_DEADLINE_MS = budget.generateMs;
   const generateStart = Date.now();
-  const withinBudget = () => Date.now() - generateStart < GENERATE_DEADLINE_MS;
+  const withinBudget = () => deterministic || Date.now() - generateStart < GENERATE_DEADLINE_MS;
 
   // Hangi YAPININ (splitter/portal/ikisi/hiçbiri) üretileceği kararı, `special`
   // ile AYNI mantıkla, deneme döngüsünden ÖNCE TEK SEFERDE veriliyor (daha
@@ -1212,7 +1322,25 @@ export function generate(difficulty, seedValue = -1) {
     tag = "both";
   }
 
-  let best = null;
+  // ZORLUK PUANI — adaylar arasında seçim. Varsayılan ölçüt ayna sayısı.
+  // Ama Zor'un portallı (splitter'sız) turlarında iki ışın birbirinden
+  // BAĞIMSIZ çözülebildiği için aynı ayna sayısında bulmacalar çok kolay
+  // kalıyordu (ölçüm: çözücü 1-2 ms, splitter'lı Zor'lar saniyeler). Aynı
+  // ayna sayısındaki adaylar arasında zorluk da ÇOK değişken (tam çözücünün
+  // DFS düğüm sayısı 29 ile 19000 arası) — bu turlarda daha fazla aday
+  // üretilip tam çözücüyü EN ÇOK zorlayan (en çok düğüm) seçiliyor. Süre
+  // sınırı dolarsa (timedOut) aday "çok zor" sayılır.
+  // Deterministik modda zorluk puanlaması KAPALI (süre ölçtüğü için cihaza
+  // göre değişirdi) — adaylar ayna sayısına göre seçilir.
+  const hardnessScoring = !deterministic && difficulty === "zor" && tag === "portalOnly";
+  if (hardnessScoring) CANDIDATES_WANTED = budget.portalOnlyCandidates;
+  const candidateScore = (puzzle) => {
+    if (!hardnessScoring) return puzzle.maxMirrorsHint;
+    const r = existsSolutionAvoiding(puzzle, new Set(), puzzle.maxMirrorsHint, budget.hardnessProbeMs);
+    return r.timedOut ? Infinity : r.nodes;
+  };
+
+  const candidates = [];
   let validCount = 0;
   for (let attempt = 0; attempt < maxAttempts && validCount < CANDIDATES_WANTED && withinBudget(); attempt++) {
     let puzzle;
@@ -1235,7 +1363,7 @@ export function generate(difficulty, seedValue = -1) {
       case "zor":
         // Gereksinim: her 10 bölümün 4 tanesinde hem splitter olacak hem
         // portal olacak, kalan 6 bölümün 3 ünde splitter 3 ünde portal
-        // olacak, her bölümde en az 2 kaynak 2 veya 1 hedef olacak. Splitter
+        // olacak, her bölümde en az 2 kaynak olacak (splitter'lılarda 3 hedef). Splitter
         // içeren turlar (both + splitter-only) artık tryComplexBeam kullanıyor
         // (2 kaynak, splitter YİNE matematiksel gerekli — bkz. o fonksiyonun
         // notu); portal-only turlar tryMultiBeam (2 kaynak, splitter yok,
@@ -1268,8 +1396,24 @@ export function generate(difficulty, seedValue = -1) {
     }
     if (puzzle == null) continue;
     validCount++;
-    if (best === null || puzzle.maxMirrorsHint > best.maxMirrorsHint) best = puzzle;
+    candidates.push({ puzzle, score: candidateScore(puzzle) });
   }
+
+  // En yüksek puanlıdan başlayarak ayna hakkı gerçek minimuma çekilir (bkz.
+  // minimizeMirrorHint). Minimum, zorluk bandının altına düşerse (bulmaca
+  // göründüğünden kolaymış) sıradaki aday denenir; hiçbiri bantta kalmazsa
+  // en yüksek puanlı aday, düşürülmüş hakkıyla kullanılır.
+  candidates.sort((a, b) => b.score - a.score);
+  let best = null;
+  const minimizeDeadline = Date.now() + budget.minimizeBudgetMs;
+  for (const c of candidates) {
+    if (!deterministic) minimizeMirrorHint(c.puzzle, minimizeDeadline, budget.minimizeStepMs);
+    if (c.puzzle.maxMirrorsHint >= cfg.range.min) {
+      best = c.puzzle;
+      break;
+    }
+  }
+  if (best === null && candidates.length > 0) best = candidates[0].puzzle;
 
   // Seçilen yapı (özellikle portal ZORUNLU turlarda) 500 denemede bile hiç
   // geçerli bulmaca üretemezse (çok küçük ihtimal ama olabilir), TAMAMEN

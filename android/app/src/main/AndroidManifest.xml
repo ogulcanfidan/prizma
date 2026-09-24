@@ -63,6 +63,16 @@
 
     <uses-permission android:name="android.permission.INTERNET" />
 
+    <!-- Dokunsal geri bildirim (bkz. www/js/haptics.js → navigator.vibrate).
+         Kurulumda kullanıcıya SORULMAZ, normal izindir. -->
+    <uses-permission android:name="android.permission.VIBRATE" />
+
+    <!-- SCHEDULE_EXACT_ALARM BİLEREK YOK: Android 14+'da yeni kurulumlarda
+         varsayılan olarak reddedilir (manifestte olması yetmez) ve Google Play
+         bu izni yalnızca alarm/takvim uygulamalarına veriyor. "Hak doldu"
+         bildirimi için birkaç dakikalık sapma sorun değil; allowWhileIdle
+         ile planlanan (inexact) bildirim yeterli (bkz. notifications.js). -->
+
     <!-- Required for in-app purchases: iap.js uses cordova-plugin-purchase,
          which does not automatically inject this permission into the
          manifest in a Capacitor + Cordova-plugin bridge, so it has to be

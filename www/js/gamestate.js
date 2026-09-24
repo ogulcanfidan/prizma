@@ -73,11 +73,33 @@ function defaultStats() {
   return d;
 }
 
+// En iyi süre birleştirme: -1 "hiç yok" demek, aksi halde KÜÇÜK olan kazanır.
+function bestTime(a, b) {
+  const x = typeof a === "number" ? a : -1;
+  const y = typeof b === "number" ? b : -1;
+  if (x < 0) return y;
+  if (y < 0) return x;
+  return Math.min(x, y);
+}
+
+function defaultDaily() {
+  return { lastDate: null, streak: 0, bestStreak: 0, solvedCount: 0, bestTimeMs: -1 };
+}
+
 function defaultSettings() {
   // language: "auto" (varsayılan — cihaz diline göre otomatik algıla, bkz.
   // i18n.js → detectLanguage) ya da desteklenen bir dil kodu (kullanıcı
   // Ayarlar'dan elle seçtiyse, bkz. i18n.js → setLanguage).
-  return { musicVolume: 0.6, sfxVolume: 0.8, notificationsEnabled: true, language: "auto" };
+  return {
+    musicVolume: 0.6,
+    sfxVolume: 0.8,
+    notificationsEnabled: true,
+    language: "auto",
+    vibrationEnabled: true,
+    // Renk körlüğü modu: hedef/kaynak kürelerin üstüne renge EK olarak şekil
+    // rozeti çizilir (bkz. board.js → colorGlyph).
+    colorBlindMode: false,
+  };
 }
 
 class GameStateStore {
@@ -88,6 +110,12 @@ class GameStateStore {
     this.playHours = new Array(24).fill(0);
     this.allowance = ALLOWANCE_CAP;
     this.allowanceLastUpdateMs = Date.now();
+    this.daily = defaultDaily();
+    // Açılmış Play Games başarıları (bkz. achievements.js) — giriş yokken de
+    // işaretlenir, giriş olunca toplu gönderilir.
+    this.unlockedAchievements = {};
+    // Kampanya (Bölümler) ilerlemesi: { "12": { timeMs } } — çözülen bölümler.
+    this.campaign = {};
     this.unlimited = false;
     this._load();
     this._refillAllowance();
@@ -181,9 +209,27 @@ class GameStateStore {
 
   // Son kayıtlı zamandan bu yana geçen süreyi sürekli (kesirli) hak olarak
   // hesaba katar — "kademeli değil, gün içinde sürekli dolsun" isteği.
+  // Cihaz saati ileri alınarak bedava hak kazanılmasına karşı koruma.
+  // performance.now() KULLANICI TARAFINDAN DEĞİŞTİRİLEMEZ (uygulama açıldığı
+  // andan beri geçen gerçek süre). Uygulama AÇIKKEN duvar saati, bu gerçek
+  // süreden belirgin biçimde (>60 sn) fazla ilerlediyse saat elle
+  // değiştirilmiş demektir — o durumda gerçek süre esas alınır.
+  // (Uygulama kapalıyken yapılan saat değişikliği sunucu olmadan tespit
+  // edilemez; hak tavanı 30 olduğu için kazanç yine de sınırlıdır.)
+  _trustedNow() {
+    const now = Date.now();
+    if (this._sessionWallStart === undefined) {
+      this._sessionWallStart = now;
+      this._sessionPerfStart = performance.now();
+      return now;
+    }
+    const expected = this._sessionWallStart + (performance.now() - this._sessionPerfStart);
+    return now > expected + 60000 ? expected : now;
+  }
+
   _refillAllowance() {
     if (this.unlimited) return;
-    const now = Date.now();
+    const now = this._trustedNow();
     const elapsed = now - this.allowanceLastUpdateMs;
     if (elapsed <= 0) return;
     const gained = elapsed / ALLOWANCE_REFILL_MS;
@@ -194,6 +240,7 @@ class GameStateStore {
   }
 
   // Tam sayı olarak gösterilecek kalan hak (UI için) — sınırsızsa Infinity.
+  // (bkz. _trustedNow — saat oynamalarına karşı koruma)
   get remainingAllowance() {
     this._refillAllowance();
     return this.unlimited ? Infinity : Math.floor(this.allowance);
@@ -276,6 +323,15 @@ class GameStateStore {
       if (Array.isArray(parsed.playHours) && parsed.playHours.length === 24) {
         this.playHours = parsed.playHours.map((n) => (typeof n === "number" && n >= 0 ? n : 0));
       }
+      if (parsed.campaign && typeof parsed.campaign === "object") {
+        this.campaign = { ...parsed.campaign };
+      }
+      if (parsed.unlockedAchievements && typeof parsed.unlockedAchievements === "object") {
+        this.unlockedAchievements = { ...parsed.unlockedAchievements };
+      }
+      if (parsed.daily && typeof parsed.daily === "object") {
+        this.daily = { ...defaultDaily(), ...parsed.daily };
+      }
       if (typeof parsed.allowance === "number" && !Number.isNaN(parsed.allowance)) {
         this.allowance = parsed.allowance;
       }
@@ -290,9 +346,195 @@ class GameStateStore {
     }
   }
 
+  // --- Kampanya (Bölümler) --------------------------------------------------
+  // Bölümler SIRAYLA açılır: bir bölüm, kendisinden önceki çözülmüşse oynanır
+  // (ilk bölüm her zaman açık).
+  isLevelSolved(index) {
+    return !!this.campaign[String(index)];
+  }
+
+  isLevelUnlocked(index) {
+    return index === 0 || this.isLevelSolved(index - 1);
+  }
+
+  levelBestTime(index) {
+    const rec = this.campaign[String(index)];
+    return rec && typeof rec.timeMs === "number" ? rec.timeMs : -1;
+  }
+
+  get campaignSolvedCount() {
+    return Object.keys(this.campaign).length;
+  }
+
+  // Çözülmüş bölümlerin EN İYİ sürelerinin toplamı (ms). Bölüm listesinde
+  // ve "tüm bölümler bitti" ekranında gösterilir; oyuncunun kendi rekorunu
+  // kırmak için tekrar oynamasına sebep olan tek sayı bu (her bölümde daha
+  // hızlı bir tur, toplamı düşürür).
+  get campaignTotalTimeMs() {
+    let sum = 0;
+    for (const rec of Object.values(this.campaign)) {
+      if (rec && typeof rec.timeMs === "number" && rec.timeMs > 0) sum += rec.timeMs;
+    }
+    return sum;
+  }
+
+  campaignAllSolved(total) {
+    for (let i = 0; i < total; i++) if (!this.isLevelSolved(i)) return false;
+    return true;
+  }
+
+  // İlk çözülmemiş bölümün indeksi (hepsi çözüldüyse son bölüm).
+  nextLevelIndex(total) {
+    for (let i = 0; i < total; i++) if (!this.isLevelSolved(i)) return i;
+    return Math.max(0, total - 1);
+  }
+
+  recordLevelSolve(index, timeMs) {
+    const key = String(index);
+    const prev = this.campaign[key];
+    const ms = Math.round(timeMs);
+    if (!prev || ms < prev.timeMs) this.campaign[key] = { timeMs: ms };
+    this._save();
+  }
+
+  isAchievementUnlocked(key) {
+    return !!this.unlockedAchievements[key];
+  }
+
+  markAchievementUnlocked(key) {
+    if (this.unlockedAchievements[key]) return;
+    this.unlockedAchievements[key] = true;
+    this._save();
+  }
+
+  // --- Bulut kayıt (bkz. cloudsave.js) --------------------------------------
+  // Dışa aktarılan yapı, localStorage'a yazılanla AYNI alanları taşır.
+  exportState() {
+    return {
+      v: 1,
+      stats: this.stats,
+      onboardingCompleted: this.onboardingCompleted,
+      settings: this.settings,
+      playHours: this.playHours,
+      daily: this.daily,
+      campaign: this.campaign,
+      unlockedAchievements: this.unlockedAchievements,
+      unlimited: this.unlimited,
+    };
+  }
+
+  // Buluttan gelen kaydı yereldekiyle BİRLEŞTİRİR — hiçbir ilerleme
+  // KAYBOLMAZ: her alanda "daha ileri" olan taraf kazanır (çözüm sayıları
+  // ve seriler için büyük olan, en iyi süreler için küçük olan). Bulmaca
+  // hakkı (allowance) BİLEREK dışarıda: zamana bağlı ve cihaza özel, ayrıca
+  // iki cihazdan hak biriktirmeye açık olurdu.
+  mergeState(remote) {
+    if (!remote || typeof remote !== "object") return false;
+    let changed = false;
+    if (remote.stats && typeof remote.stats === "object") {
+      for (const diff of DIFFICULTIES) {
+        const r = remote.stats[diff];
+        if (!r) continue;
+        const l = this.stats[diff] || { solved: 0, bestTimeMs: -1, totalTimeMs: 0, currentStreak: 0, bestStreak: 0 };
+        const merged = {
+          solved: Math.max(l.solved || 0, r.solved || 0),
+          totalTimeMs: Math.max(l.totalTimeMs || 0, r.totalTimeMs || 0),
+          bestTimeMs: bestTime(l.bestTimeMs, r.bestTimeMs),
+          currentStreak: Math.max(l.currentStreak || 0, r.currentStreak || 0),
+          bestStreak: Math.max(l.bestStreak || 0, r.bestStreak || 0),
+        };
+        if (JSON.stringify(merged) !== JSON.stringify(l)) changed = true;
+        this.stats[diff] = merged;
+      }
+    }
+    if (remote.onboardingCompleted && !this.onboardingCompleted) {
+      this.onboardingCompleted = true;
+      changed = true;
+    }
+    if (remote.unlimited && !this.unlimited) {
+      this.unlimited = true;
+      changed = true;
+    }
+    if (remote.daily && typeof remote.daily === "object") {
+      const r = remote.daily;
+      const l = this.daily;
+      // Daha yeni tarih daha güncel seriyi taşır; en iyiler her zaman maksimum.
+      const remoteNewer = (r.lastDate || "") > (l.lastDate || "");
+      this.daily = {
+        lastDate: remoteNewer ? r.lastDate : l.lastDate,
+        streak: remoteNewer ? r.streak || 0 : l.streak || 0,
+        bestStreak: Math.max(l.bestStreak || 0, r.bestStreak || 0),
+        solvedCount: Math.max(l.solvedCount || 0, r.solvedCount || 0),
+        bestTimeMs: bestTime(l.bestTimeMs, r.bestTimeMs),
+      };
+      if (remoteNewer) changed = true;
+    }
+    if (remote.campaign && typeof remote.campaign === "object") {
+      for (const [key, rec] of Object.entries(remote.campaign)) {
+        const ms = rec && typeof rec.timeMs === "number" ? rec.timeMs : -1;
+        const local = this.campaign[key];
+        if (!local || (ms >= 0 && ms < local.timeMs)) {
+          this.campaign[key] = { timeMs: ms >= 0 ? ms : local ? local.timeMs : 0 };
+          changed = true;
+        }
+      }
+    }
+    if (remote.unlockedAchievements && typeof remote.unlockedAchievements === "object") {
+      for (const key of Object.keys(remote.unlockedAchievements)) {
+        if (remote.unlockedAchievements[key] && !this.unlockedAchievements[key]) {
+          this.unlockedAchievements[key] = true;
+          changed = true;
+        }
+      }
+    }
+    if (changed) this._save();
+    return changed;
+  }
+
+  // --- Günlük bulmaca + seri ------------------------------------------------
+  // Oyuncunun ertesi gün geri gelmesi için: her gün TEK bir bulmaca, tarihten
+  // türetilen sabit bir tohumla üretilir (bkz. puzzleService → takeDaily).
+  // Seri (streak) ardışık gün çözümüyle artar, bir gün atlanınca 1'e döner.
+  // Tarih anahtarı CİHAZIN YEREL tarihidir ("YYYY-MM-DD").
+
+  static dateKey(d = new Date()) {
+    const p = (n) => String(n).padStart(2, "0");
+    return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}`;
+  }
+
+  dailySolvedToday() {
+    return this.daily.lastDate === GameStateStore.dateKey();
+  }
+
+  // Seri, dün de çözülmüşse devam eder; bugün zaten çözüldüyse değişmez.
+  recordDailySolve(timeMs) {
+    const today = GameStateStore.dateKey();
+    if (this.daily.lastDate === today) return; // aynı gün ikinci çözüm seriyi artırmaz
+    const yesterday = GameStateStore.dateKey(new Date(Date.now() - 24 * 60 * 60 * 1000));
+    this.daily.streak = this.daily.lastDate === yesterday ? this.daily.streak + 1 : 1;
+    if (this.daily.streak > this.daily.bestStreak) this.daily.bestStreak = this.daily.streak;
+    this.daily.lastDate = today;
+    this.daily.solvedCount += 1;
+    if (typeof timeMs === "number" && (this.daily.bestTimeMs < 0 || timeMs < this.daily.bestTimeMs)) {
+      this.daily.bestTimeMs = Math.round(timeMs);
+    }
+    this._save();
+  }
+
+  // Gösterim için: seri bugün ya da dün çözülmemişse KIRILMIŞ sayılır.
+  get dailyStreak() {
+    const today = GameStateStore.dateKey();
+    const yesterday = GameStateStore.dateKey(new Date(Date.now() - 24 * 60 * 60 * 1000));
+    if (this.daily.lastDate === today || this.daily.lastDate === yesterday) return this.daily.streak;
+    return 0;
+  }
+
   _save() {
     try {
       const payload = {
+        daily: this.daily,
+        campaign: this.campaign,
+        unlockedAchievements: this.unlockedAchievements,
         stats: this.stats,
         onboardingCompleted: this.onboardingCompleted,
         settings: this.settings,
@@ -309,3 +551,8 @@ class GameStateStore {
 }
 
 export const GameState = new GameStateStore();
+
+// Bugünün yerel tarih anahtarı ("YYYY-MM-DD") — günlük bulmaca için.
+export function todayKey() {
+  return GameStateStore.dateKey();
+}

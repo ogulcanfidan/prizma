@@ -247,6 +247,35 @@ h3 {
   width: min(320px, 80vw);
 }
 
+/* İkincil menü satırı: iki küçük, çerçevesiz buton yan yana. Ana menüdeki
+   üç oyun butonunun görsel ağırlığını almasınlar diye .btn değiller. */
+.menu-secondary {
+  display: flex;
+  gap: 10px;
+  margin-top: 4px;
+}
+
+.btn-ghost {
+  flex: 1;
+  min-width: 0;
+  padding: 11px 8px;
+  border-radius: 12px;
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  background: transparent;
+  color: var(--text-muted);
+  font-family: inherit;
+  font-size: 13px;
+  font-weight: 600;
+  letter-spacing: 0.2px;
+  cursor: pointer;
+  transition: background 0.15s ease, color 0.15s ease;
+}
+.btn-ghost:active {
+  background: rgba(255, 255, 255, 0.09);
+  color: var(--text);
+}
+.btn-ghost[hidden] { display: none; }
+
 /* --- Zorluk seçimi --- */
 #screen-difficulty .center {
   flex: 1;
@@ -270,6 +299,34 @@ h3 {
   font-weight: 500;
   font-size: 13px;
   opacity: 0.75;
+}
+
+/* Zorluk kartı: solda ad + o seviyedeki mekanik simgeleri, sağda çözülen
+   sayısı + en iyi süre. */
+.diff-btn .diff-left,
+.diff-btn .diff-right {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.diff-btn .diff-left { align-items: flex-start; }
+.diff-btn .diff-right { align-items: flex-end; }
+.diff-btn .mechs {
+  display: flex;
+  gap: 6px;
+}
+.diff-btn .mech {
+  width: 22px;
+  height: 22px;
+  padding: 3px;
+  border-radius: 6px;
+  background: color-mix(in srgb, var(--accent) 14%, transparent);
+  color: var(--accent);
+}
+.diff-btn .mech svg {
+  display: block;
+  width: 100%;
+  height: 100%;
 }
 
 /* --- Üst bar (ortak) --- */
@@ -339,18 +396,52 @@ h3 {
   padding: 14px 0;
 }
 
+/* Tahta, ekran kenarından 8px kalacak şekilde neredeyse tam genişlik kullanır
+   (Usta'nın 12x12 ızgarasında hücreler parmakla rahat seçilebilsin diye —
+   eskiden 20px ekran boşluğu + 16px çerçeve boşluğu hücreleri küçültüyordu). */
+#screen-game .board-center {
+  margin: 0 -12px;
+}
 .board-frame {
   --accent: var(--accent-cyan);
   position: relative;
-  width: min(92vw, 60vh, 460px);
-  border-radius: 18px;
-  padding: 16px;
+  width: min(calc(100vw - 16px), 64vh, 520px);
+  border-radius: 14px;
+  padding: 6px;
   background: var(--bg-panel);
   border: 2px solid rgba(64, 235, 255, 0.45);
   box-shadow: 0 0 26px 0 rgba(64, 235, 255, 0.24);
   border-color: color-mix(in srgb, var(--accent) 45%, transparent);
   box-shadow: 0 0 26px 0 color-mix(in srgb, var(--accent) 24%, transparent);
 }
+
+/* Bulmaca arka planda hazırlanırken (bkz. main.js → setPreparing). */
+.board-frame { aspect-ratio: 1; }
+.board-frame.is-preparing .board-svg {
+  visibility: hidden;
+  pointer-events: none;
+}
+.board-preparing {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 14px;
+  color: var(--text-muted);
+  font-size: 15px;
+}
+.board-preparing[hidden] { display: none; }
+.board-preparing-spinner {
+  width: 34px;
+  height: 34px;
+  border-radius: 50%;
+  border: 3px solid color-mix(in srgb, var(--accent) 25%, transparent);
+  border-top-color: var(--accent);
+  animation: board-spin 0.9s linear infinite;
+}
+@keyframes board-spin { to { transform: rotate(360deg); } }
 
 .board-svg {
   display: block;
@@ -367,9 +458,25 @@ h3 {
   gap: 10px;
 }
 
+/* Üç araç butonu (Sıfırla / Geri Al / İpucu) + ayna sayacı dar telefon
+   ekranında da TEK satıra sığmalı — butonlar kompakt, sayaç sarmıyor. */
+.tool-row {
+  display: flex;
+  gap: 6px;
+}
+.tool-row .btn.small {
+  font-size: 13px;
+  padding: 9px 11px;
+  white-space: nowrap;
+}
+.tool-row .btn.small:disabled {
+  opacity: 0.4;
+}
+
 .hint-text {
   color: var(--text-muted);
-  font-size: 13px;
+  font-size: 12px;
+  white-space: nowrap;
   font-variant-numeric: tabular-nums;
 }
 
@@ -411,6 +518,13 @@ h3 {
   display: none !important;
 }
 
+/* Bölüm bitirme ekranı oyun ekranının DIŞINDA duruyor (kapanınca bölüm
+   listesine dönüyor), yani ekranın kendi yan boşluğunu almıyor — paneli
+   kenarlara yapışmasın diye burada veriliyor. */
+#campaign-done-overlay {
+  padding: 0 22px;
+}
+
 .win-panel {
   --accent: var(--accent-cyan);
   padding: 28px 30px;
@@ -431,7 +545,158 @@ h3 {
   font-size: 14px;
 }
 
+/* Kazanma ekranındaki ikinci satır: yeni rekor / en iyiyle fark / kazanılan
+   puan gibi "bu çözüm ne kazandırdı" bilgisi. */
+.win-extra {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 8px;
+}
+.win-extra[hidden] { display: none; }
+.win-extra .tag {
+  font-family: "Manrope", sans-serif;
+  font-size: 12.5px;
+  font-weight: 600;
+  padding: 5px 11px;
+  border-radius: 999px;
+  border: 1px solid color-mix(in srgb, var(--accent) 40%, transparent);
+  background: color-mix(in srgb, var(--accent) 14%, transparent);
+  color: var(--text-primary);
+}
+.win-extra .tag.record {
+  border-color: var(--accent-amber);
+  background: color-mix(in srgb, var(--accent-amber) 20%, transparent);
+  color: var(--accent-amber);
+}
+
+/* Çözüm anındaki kutlama: prizma temasına uygun, panelin arkasından açılan
+   renkli ışık huzmeleri. Sadece bir kez oynar (CSS animasyonu), performans
+   maliyeti yok denecek kadar azdır. */
+.win-burst {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 4px;
+  height: 4px;
+  pointer-events: none;
+}
+.win-burst span {
+  position: absolute;
+  left: 0;
+  top: 0;
+  width: 3px;
+  height: 46px;
+  border-radius: 2px;
+  transform-origin: 50% 0;
+  opacity: 0;
+  animation: win-ray 900ms ease-out forwards;
+}
+@keyframes win-ray {
+  0% { opacity: 0; transform: rotate(var(--a)) translateY(0) scaleY(0.3); }
+  25% { opacity: 0.95; }
+  100% { opacity: 0; transform: rotate(var(--a)) translateY(150px) scaleY(1); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .win-burst { display: none; }
+}
+
 /* --- Ayarlar ekranı --- */
+/* Günlük bulmaca butonu: ana satır + altında durum/seri bilgisi. */
+.daily-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-direction: column;
+  gap: 3px;
+  line-height: 1.25;
+}
+.daily-btn .daily-sub {
+  font-family: "Manrope", sans-serif;
+  font-weight: 500;
+  font-size: 12px;
+  letter-spacing: 0;
+  text-transform: none;
+  opacity: 0.8;
+}
+.daily-btn.done .daily-main::after {
+  content: " ✓";
+}
+
+/* --- Bölümler (kampanya) ekranı --- */
+.campaign-progress {
+  text-align: center;
+  color: var(--text-muted);
+  font-size: 13px;
+  margin: 10px 0 4px;
+}
+
+/* Toplam süre: ilerleme satırının hemen altında, biraz daha silik. */
+.campaign-total {
+  text-align: center;
+  color: var(--text-muted);
+  opacity: 0.75;
+  font-size: 12px;
+  font-variant-numeric: tabular-nums;
+  margin: 0 0 2px;
+}
+.campaign-total[hidden] { display: none; }
+
+.level-grid {
+  flex: 1;
+  overflow-y: auto;
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(62px, 1fr));
+  gap: 10px;
+  padding: 10px 2px 24px;
+  align-content: start;
+}
+
+.level-cell {
+  --accent: var(--accent-cyan);
+  appearance: none;
+  aspect-ratio: 1;
+  border-radius: 14px;
+  border: 1.5px solid color-mix(in srgb, var(--accent) 45%, transparent);
+  background: var(--bg-panel);
+  color: var(--text-primary);
+  font-family: "Sora", system-ui, sans-serif;
+  font-weight: 600;
+  font-size: 17px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 2px;
+  cursor: pointer;
+  touch-action: manipulation;
+}
+
+.level-cell .level-time {
+  font-family: "Manrope", sans-serif;
+  font-weight: 500;
+  font-size: 10px;
+  color: var(--text-muted);
+  font-variant-numeric: tabular-nums;
+}
+
+.level-cell.solved {
+  background: color-mix(in srgb, var(--accent) 16%, var(--bg-panel));
+  box-shadow: 0 0 12px 0 color-mix(in srgb, var(--accent) 22%, transparent);
+}
+
+.level-cell.locked {
+  opacity: 0.4;
+  border-color: rgba(148, 163, 189, 0.3);
+  color: var(--text-muted);
+  cursor: default;
+}
+
+.level-cell.next {
+  border-width: 2.5px;
+  box-shadow: 0 0 16px 0 color-mix(in srgb, var(--accent) 38%, transparent);
+}
+
 .settings-list {
   flex: 1;
   display: flex;
@@ -529,6 +794,40 @@ h3 {
 .lang-select option {
   background: #14161f;
   color: var(--text-primary);
+}
+
+/* Ayarlar'daki eylem/bağlantı satırları (geri yükleme, reklam tercihleri,
+   gizlilik politikası) — toggle satırıyla aynı hizada, sağında chevron. */
+/* Sürüm satırı: değer native taraftan (Capacitor App plugin) okunur, elle
+   yazılmaz — build.gradle'daki versionName/versionCode ile her zaman uyumlu. */
+.settings-version-row {
+  padding-top: 10px;
+  padding-bottom: 10px;
+}
+.settings-version-row[hidden] { display: none; }
+
+.settings-link-row {
+  appearance: none;
+  border: none;
+  background: transparent;
+  color: var(--text-primary);
+  font-family: "Manrope", sans-serif;
+  font-size: 15px;
+  font-weight: 600;
+  padding: 14px 4px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  text-align: left;
+  cursor: pointer;
+}
+.settings-link-row[hidden] { display: none; }
+.settings-link-row:disabled { opacity: 0.5; }
+.settings-link-chevron {
+  color: var(--text-muted);
+  font-size: 20px;
+  line-height: 1;
 }
 
 .settings-toggle-row {
@@ -653,6 +952,14 @@ h3 {
    kendi rengiyle: mor --accent-violet (cyan Oyna/Ayarlar'da, amber hak
    rozetinde kullanıldığından, sıralama üçüncü ve ayrı bir vurgu rengiyle
    net şekilde ayrışıyor). */
+.stats-chip-row {
+  display: flex;
+  justify-content: center;
+  gap: 10px;
+  margin-top: 14px;
+  flex-wrap: wrap;
+}
+
 .leaderboard-chip {
   appearance: none;
   border: 1.5px solid color-mix(in srgb, var(--accent-violet) 42%, transparent);

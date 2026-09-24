@@ -43,7 +43,9 @@ export const BOARD = {
   wallStroke: "#3A4166",
   gridLine: "rgba(255,255,255,0.05)",
 
-  mirror: "#FFC94B",
+  // Oyuncunun aynası gümüş-beyaz: eskiden altın sarısıydı ve Orta'nın amber
+  // vurgu rengiyle (çerçeve/rozet) karışıyordu.
+  mirror: "#EEF4FF",
   // Sabit (oyuncunun yerleştirmediği/kaldıramadığı) ortam aynası. Eskiden
   // `mirror` ile BİREBİR aynı renkte çizildiği için, bölüm başında zaten
   // yerleşik duran bir ayna görüldüğünde bug gibi algılanıyordu; şimdi
@@ -63,7 +65,7 @@ const COLOR_MAP = {
   "000": BOARD.none,
   "100": "#FF5C7A", // R
   "010": "#3DDC97", // G
-  "001": "#5CC8FF", // B
+  "001": "#4D8BFF", // B — turkuaz (G+B) ve splitter camgöbeğinden ayrışsın diye daha koyu mavi
   "110": "#FFE066", // R+G
   "101": "#FF7AE0", // R+B
   "011": "#6FFFE0", // G+B

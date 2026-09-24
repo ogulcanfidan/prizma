@@ -4,3 +4,12 @@ npm-debug.log*
 # Temporary/working files not part of the shipped app
 _gecici_*
 _gecici_screenshots/
+
+# İmza anahtarı (keystore) — ASLA repoya girmemeli, ayrıca yedeklenmeli
+prizma-release-key
+*.jks
+*.keystore
+
+# Cihaz logları
+iap_log.txt
+*.log

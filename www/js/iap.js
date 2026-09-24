@@ -145,6 +145,37 @@ export function initIAP() {
   }
 }
 
+// "Satın almayı geri yükle" — Ayarlar ekranındaki buton. Açılışta yapılan
+// otomatik `owned` kontrolü (yukarıda) bir YEDEK; kullanıcı yeniden kurulum
+// ya da cihaz değişiminden sonra GÖRÜNÜR bir geri yükleme yolu bekler (ödediği
+// şeyi geri alamayan oyuncu kötü yorum bırakır). true = sınırsız hak geri
+// verildi, false = bu hesapta satın alma bulunamadı, null = mağazaya hiç
+// ulaşılamadı (plugin yok / hata).
+export async function restorePurchases() {
+  const store = getStore();
+  if (!store) {
+    console.warn("iap.js: geri yükleme başlatılamadı — window.CdvPurchase yok");
+    return null;
+  }
+  try {
+    if (store.restorePurchases) await store.restorePurchases();
+    else if (store.refresh) store.refresh();
+    // Mağaza yanıtı asenkron gelir; kısa bir süre bekleyip sahipliğe bakılır
+    // (satın alma onaylanırsa yukarıdaki approved() zaten hakkı verir).
+    await new Promise((r) => setTimeout(r, 2500));
+    const product = store.get(UNLIMITED_PRODUCT_ID);
+    if (GameState.unlimited || (product && product.owned)) {
+      GameState.grantUnlimited();
+      if (onGrantedCallback) onGrantedCallback();
+      return true;
+    }
+    return false;
+  } catch (e) {
+    console.warn("iap.js: geri yükleme başarısız", e);
+    return null;
+  }
+}
+
 export function isAvailable() {
   return !!getStore();
 }

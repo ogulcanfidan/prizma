@@ -13,8 +13,11 @@ export class PuzzleData {
     this.sources = [];            // [{pos, dir, color}]
     this.targets = [];            // [{pos, color}]
     this.portals = new Map();     // "x,y" -> {x,y} (iki yönlü)
-    this.splitters = new Map();   // "x,y" -> bool (true: doğru kol sağa döner)
+    this.splitters = new Map();   // "x,y" -> [Dir, Dir] — ışının çıkacağı İKİ MUTLAK yön (giriş yönünden bağımsız)
     this.fixedMirrors = new Map();// "x,y" -> MirrorType
+    // Üreticinin bulduğu çözüm: [["x,y", MirrorType], ...] — ipucu bunu
+    // kullanır (bkz. generator.js). Elle yazılan eğitim bulmacalarında null.
+    this.solution = null;
 
     this.title = "";
     this.tutorialText = "";
@@ -67,9 +70,22 @@ export class PuzzleData {
     this.portals.delete(posKey(b));
   }
 
-  addSplitter(pos, branchRight) {
+  // exits: [Dir, Dir] — splitter'a HANGİ yönden girerse girsin ışın HER
+  // ZAMAN bu iki yöne çıkar (board.js'teki iki ok tam olarak bunlardır).
+  // Üretici, çıkış yönlerini ancak kaynağın splitter'a varış yönünü
+  // hesapladıktan sonra bilebildiği için exits önce null verilip sonra
+  // setSplitterExits ile doldurulabilir; null iken splitter ışını yutar.
+  addSplitter(pos, exits = null) {
     this.cells.set(posKey(pos), Cell.SPLITTER);
-    this.splitters.set(posKey(pos), branchRight);
+    this.splitters.set(posKey(pos), exits);
+  }
+
+  setSplitterExits(pos, exits) {
+    this.splitters.set(posKey(pos), exits);
+  }
+
+  splitterExits(pos) {
+    return this.splitters.get(posKey(pos)) || [];
   }
 
   // Üretici, bir splitter denemesinin bulmacayı çözülemez hale getirdiğini ya
