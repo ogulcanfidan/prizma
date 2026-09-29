@@ -13,3 +13,6 @@ prizma-release-key
 # Cihaz logları
 iap_log.txt
 *.log
+
+# Yerel editör ayarları
+.claude/
