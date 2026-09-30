@@ -12,7 +12,7 @@ import { difficultyColor, UI } from "./theme.js";
 import { renderLogo } from "./logo.js";
 import { unlockAudio, playSfx, setMusicVolume, setSfxVolume, getMusicVolume, getSfxVolume, startMusic, stopMusic } from "./audio.js";
 import { refreshDailyNotification } from "./notifications.js";
-import { showBanner, hideBanner, showRewardedAd, showAdPreferences } from "./ads.js";
+import { showRewardedAd, showAdPreferences } from "./ads.js";
 import { initIAP, purchaseUnlimited, onUnlimitedGranted, restorePurchases } from "./iap.js";
 import { initLeaderboard, submitTotalScore, showLeaderboard } from "./leaderboard.js";
 import { checkAchievements, syncUnlockedAchievements, showAchievements } from "./achievements.js";
@@ -37,22 +37,10 @@ const screens = {
   game: document.getElementById("screen-game"),
 };
 
-const adBannerSpacer = document.getElementById("ad-banner-spacer");
 
 function showScreen(name) {
   for (const key of Object.keys(screens)) {
     screens[key].hidden = key !== name;
-  }
-  // Alt banner reklam: sadece oyun ekranında gösterilir. Web önizlemede/
-  // plugin yokken showBanner() sessizce false döner, spacer görünmez kalır
-  // (boş boşluk bırakmaz).
-  if (name === "game") {
-    showBanner().then((ok) => {
-      adBannerSpacer.hidden = !ok;
-    });
-  } else {
-    hideBanner();
-    adBannerSpacer.hidden = true;
   }
 }
 
@@ -445,7 +433,7 @@ settingsSfxSlider.addEventListener("change", () => playSfx("click"));
 // uygulama içi alım içeren uygulamalarda gizlilik politikası bağlantısını
 // ZORUNLU tutuyor — buraya Play Console'a girdiğin politika adresinin AYNISI
 // yazılmalı.
-const PRIVACY_POLICY_URL = "https://fmjapps.github.io/privacy/prizma/";
+const PRIVACY_POLICY_URL = "https://fmjapps.com/privacy/prizma/";
 
 // --- Sürüm bilgisi ---------------------------------------------------------
 // Değer native taraftan okunur (Capacitor App plugin → getInfo): version =

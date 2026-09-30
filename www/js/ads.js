@@ -1,13 +1,18 @@
-// ads.js — @capacitor-community/admob sarmalayıcısı: alt banner + ödüllü
+// ads.js — @capacitor-community/admob sarmalayıcısı: YALNIZCA ödüllü
 // (rewarded) reklam. Web önizlemede / plugin yokken sessizce devre dışı.
+//
+// ALT BANNER KALDIRILDI: oyun ekranının altında sabit duran banner, oyunun
+// sakin/neon görsel dilini bozuyordu ve kazanma ekranının üzerinde bile
+// görünüyordu (native katman olduğu için). Artık tek reklam biçimi, oyuncunun
+// KENDİ isteğiyle izlediği ödüllü reklam; para kazanma tarafında geri kalan
+// tek seferlik "sınırsız" satın alması (bkz. iap.js). AdMob konsolundaki
+// "Prizma-banner" birimi hâlâ duruyor ama uygulama onu artık çağırmıyor.
 //
 // AdMob UYGULAMA ID'si capacitor.config.json'da ZATEN GERÇEK (önceki
 // sürümden korunan değer): ca-app-pub-2569162850712494~6258031941.
 //
-// GERÇEK REKLAM BİRİMİ ID'LERİ (AdMob konsolundan alınmıştır, Google'ın
-// TEST ID'leri DEĞİL):
-//  - BANNER_UNIT_ID: önceki sürümden zaten var olan gerçek "Prizma-banner"
-//    reklam birimi.
+// GERÇEK REKLAM BİRİMİ ID'Sİ (AdMob konsolundan alınmıştır, Google'ın
+// TEST ID'si DEĞİL):
 //  - REWARDED_UNIT_ID: AdMob konsolunda önceden sadece BANNER + "Prizma-gecis"
 //    (GEÇİŞ/interstitial) reklam birimleri vardı, ÖDÜLLÜ birim YOKTU. Eski
 //    sürümde "her 10 bölümü geçince zorunlu" bir geçiş reklamı çıkıyordu;
@@ -27,7 +32,6 @@
 // `node_modules/@capacitor-community/admob/dist/esm/definitions.d.ts`
 // dosyasına bakıp burayı güncelleyin.
 
-const BANNER_UNIT_ID = "ca-app-pub-2569162850712494/5547585507"; // gerçek "Prizma-banner"
 const REWARDED_UNIT_ID = "ca-app-pub-2569162850712494/3074598274"; // gerçek "Prizma-odul" (yeni oluşturulan birim)
 
 function getAdMob() {
@@ -97,35 +101,6 @@ async function ensureInit() {
   return AdMob;
 }
 
-// Alt banner reklamı gösterir (oyun ekranının en altında, sabit).
-export async function showBanner() {
-  const AdMob = await ensureInit();
-  if (!AdMob) return false;
-  try {
-    await AdMob.showBanner({
-      adId: BANNER_UNIT_ID,
-      adSize: "ADAPTIVE_BANNER",
-      position: "BOTTOM_CENTER",
-      margin: 0,
-    });
-    return true;
-  } catch (e) {
-    console.warn("ads.js: banner gösterilemedi", e);
-    return false;
-  }
-}
-
-export async function hideBanner() {
-  const AdMob = getAdMob();
-  if (!AdMob) return;
-  try {
-    await AdMob.hideBanner();
-  } catch (e) {
-    /* yoksay */
-  }
-}
-
-// Ödüllü reklamı hazırlar+gösterir; izleyip ödülü hak ederse true döner.
 export async function showRewardedAd() {
   const AdMob = await ensureInit();
   if (!AdMob) return false;

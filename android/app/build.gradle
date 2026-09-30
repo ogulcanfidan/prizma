@@ -84,8 +84,14 @@ android {
         // Play Games başarıları ve bulut kayıt (Snapshots) eklendi; reklam
         // onayı (UMP), gizlilik politikası bağlantısı ve "satın almayı geri
         // yükle" ile yayın gereksinimleri tamamlandı. 14'e çekildi; 2.1.
-        versionCode 14
-        versionName "2.1"
+        // versionCode 14 (2.1) kapalı teste yüklendi ve üretim erişimi alındı.
+        // Sonraki sürüm: alt banner reklam TAMAMEN kaldırıldı (oyunun görsel
+        // bütünlüğü için; tek reklam biçimi artık gönüllü ödüllü reklam),
+        // 60 bölümlük kampanya bitiş ekranı + toplam süre, "Yolun Sonu"
+        // başarımı, günlük bulmaca artık her gün Usta, ana menü sadeleşti.
+        // 15'e çekildi; 2.2.
+        versionCode 15
+        versionName "2.2"
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
         aaptOptions {
              // Files and dirs to omit from the packaged assets dir, modified to accommodate modern web apps.

@@ -1329,14 +1329,6 @@ h3 {
   font-variant-numeric: tabular-nums;
 }
 
-/* --- Alt banner reklam yeri: native AdMob banner'ı (varsa) WebView'in
-   ÜZERİNE bindirir, DOM'da yer kaplamaz — bu boşluk sadece oyun içeriğinin
-   reklamın ALTINDA kalmaması için ayrılan bir "spacer". --- */
-.ad-banner-spacer {
-  height: 50px;
-  flex-shrink: 0;
-}
-
 /* --- Ambiyans lekeler (GlowBackdrop karşılığı) --- */
 .atmosphere {
   position: absolute;
