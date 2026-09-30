@@ -219,6 +219,64 @@ const statsChips = await page.evaluate(() => ({
 check(`İstatistiklerde Sıralama + Başarılar butonları var (${statsChips.chips})`, statsChips.chips === 2);
 check("Başlık tek satırda duruyor", statsChips.titleLines === 1);
 
+// --- 9) Diller: 14 dilin her birinde arayüz taşmıyor mu --------------------
+// Çevirilerin UZUNLUĞU dile göre çok değişir (Almanca/Endonezce uzun, CJK
+// kısa). Her dilde: ayarlardaki seçicide dil var mı, ana menü yatay taşıyor
+// mu, oyun ekranındaki araç çubuğu tek satıra sığıyor mu, hak penceresindeki
+// fiyat satırı sabit "TL" içermeden doluyor mu.
+await goto("gotoSettings");
+const langCodes = await page.evaluate(() => [...document.getElementById("settings-language").options].map((o) => o.value).filter((v) => v !== "auto"));
+check(`Dil seçicide 14 dil var (${langCodes.length})`, langCodes.length === 14);
+
+const langProblems = [];
+for (const code of langCodes) {
+  await goto("gotoSettings");
+  await page.selectOption("#settings-language", code);
+  await page.waitForTimeout(120);
+  await page.evaluate(() => window.__prizmaDebug.setAllowance(30));
+
+  await goto("gotoMenu");
+  const menu = await page.evaluate(() => {
+    const el = document.getElementById("screen-menu");
+    const btns = [...el.querySelectorAll(".btn, .btn-ghost")].filter((b) => !b.hidden);
+    return {
+      overflowX: el.scrollWidth > el.clientWidth + 1,
+      clipped: btns.filter((b) => b.scrollWidth > b.clientWidth + 1).map((b) => b.id),
+      untranslated: btns.filter((b) => /^[a-z]+\.[a-zA-Z.]+$/.test(b.textContent.trim())).map((b) => b.id),
+    };
+  });
+  if (menu.overflowX) langProblems.push(`${code}: ana menü yatay taşıyor`);
+  if (menu.clipped.length) langProblems.push(`${code}: menü butonu metni sığmıyor (${menu.clipped.join(",")})`);
+  if (menu.untranslated.length) langProblems.push(`${code}: çevrilmemiş anahtar görünüyor (${menu.untranslated.join(",")})`);
+
+  await goto("gotoEndless", "orta");
+  await waitPuzzle();
+  const game = await page.evaluate(() => {
+    const bar = document.querySelector("#screen-game .bottom-bar");
+    return { fits: bar.scrollWidth <= bar.clientWidth + 1, wraps: bar.getBoundingClientRect().height > 70 };
+  });
+  if (!game.fits || game.wraps) langProblems.push(`${code}: araç çubuğu tek satıra sığmıyor`);
+
+  const price = await page.evaluate(() => {
+    document.getElementById("allowance-badge").click();
+    const txt = document.getElementById("allowance-buy-price").textContent;
+    document.getElementById("allowance-overlay").hidden = true;
+    return txt;
+  });
+  if (!price.trim() || /TL|\{price\}/.test(price)) langProblems.push(`${code}: fiyat satırı hatalı ("${price}")`);
+}
+if (langProblems.length) console.log(langProblems.join("\n"));
+check(`14 dilin hepsinde menü, araç çubuğu ve fiyat satırı düzgün (${langProblems.length} sorun)`, langProblems.length === 0);
+
+// Arapça sağdan sola, diğerleri soldan sağa.
+await goto("gotoSettings");
+await page.selectOption("#settings-language", "ar");
+const dirAr = await page.evaluate(() => document.documentElement.dir);
+await page.selectOption("#settings-language", "ja");
+const dirJa = await page.evaluate(() => document.documentElement.dir);
+check(`Yazı yönü dile göre değişiyor (ar=${dirAr}, ja=${dirJa})`, dirAr === "rtl" && dirJa === "ltr");
+await page.selectOption("#settings-language", "tr");
+
 check(`Konsolda hata yok (${errors.length})`, errors.length === 0);
 if (errors.length) console.log(errors.join("\n"));
 

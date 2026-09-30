@@ -13,11 +13,11 @@ import { renderLogo } from "./logo.js";
 import { unlockAudio, playSfx, setMusicVolume, setSfxVolume, getMusicVolume, getSfxVolume, startMusic, stopMusic } from "./audio.js";
 import { refreshDailyNotification } from "./notifications.js";
 import { showRewardedAd, showAdPreferences } from "./ads.js";
-import { initIAP, purchaseUnlimited, onUnlimitedGranted, restorePurchases } from "./iap.js";
+import { initIAP, purchaseUnlimited, onUnlimitedGranted, restorePurchases, getUnlimitedPrice } from "./iap.js";
 import { initLeaderboard, submitTotalScore, showLeaderboard } from "./leaderboard.js";
 import { checkAchievements, syncUnlockedAchievements, showAchievements } from "./achievements.js";
 import { syncWithCloud, scheduleCloudSave } from "./cloudsave.js";
-import { initI18n, t, setLanguage, SUPPORTED_LANGS, LANG_NAMES } from "./i18n.js";
+import { initI18n, t, setLanguage, getLanguage, SUPPORTED_LANGS, LANG_NAMES } from "./i18n.js";
 
 // Yakalanmamış hatalar Logcat'e + cihazdaki küçük bir halkaya yazılır
 // (bkz. errorlog.js) — mümkün olan EN ERKEN noktada kurulmalı.
@@ -61,6 +61,23 @@ function applyStaticStrings() {
   });
   const bonusEl = document.getElementById("allowance-watch-ad-bonus");
   if (bonusEl) bonusEl.textContent = t("allowance.watchAdBonus", { n: REWARDED_AD_BONUS });
+  refreshUnlimitedPriceLabel();
+  // Logo: büyük harfli marka adı yalnızca Türkçe'de noktalı İ ile yazılır
+  // ("PRIZMA" Türkçe'de "Prızma" okunur); diğer dillerde noktalı İ yabancı
+  // bir harf gibi durduğu için PRIZMA.
+  document.getElementById("logo-title").textContent = getLanguage() === "tr" ? "PRİZMA" : "PRIZMA";
+}
+
+// "Sınırsız Ol" düğmesinin altındaki fiyat satırı. Fiyat mağazadan, oyuncunun
+// kendi para birimiyle okunur (bkz. iap.js → getUnlimitedPrice); mağaza henüz
+// yanıt vermediyse fiyatsız "tek seferlik satın alma" yazılır. Hak penceresi
+// her açıldığında yeniden çağrılır, çünkü fiyat açılıştan birkaç saniye SONRA
+// gelir.
+function refreshUnlimitedPriceLabel() {
+  const el = document.getElementById("allowance-buy-price");
+  if (!el) return;
+  const price = getUnlimitedPrice();
+  el.textContent = price ? t("allowance.buyUnlimitedPrice", { price }) : t("allowance.buyUnlimitedOneTime");
 }
 
 const settingsLanguageSelect = document.getElementById("settings-language");
@@ -295,9 +312,11 @@ function formatTotalTime(ms) {
   const h = Math.floor(totalSec / 3600);
   const m = Math.floor((totalSec % 3600) / 60);
   const s = totalSec % 60;
-  if (h > 0) return `${h} sa ${m} dk`;
-  if (m > 0) return `${m} dk ${s} sn`;
-  return `${s} sn`;
+  // Birimler dile göre (bkz. i18n.js → time.*).
+  const U = { h: t("time.hour"), m: t("time.min"), s: t("time.sec") };
+  if (h > 0) return `${h} ${U.h} ${m} ${U.m}`;
+  if (m > 0) return `${m} ${U.m} ${s} ${U.s}`;
+  return `${s} ${U.s}`;
 }
 
 // Üst özet, ham "toplam çözülen"/"en iyi seri" DEĞİL, PUAN (GameState.totalPoints
@@ -606,10 +625,13 @@ function refreshAllowanceBadge() {
 
 function formatDuration(ms) {
   const totalMin = Math.max(1, Math.round(ms / 60000));
-  if (totalMin < 60) return `${totalMin} dk`;
+  // Birimler dile göre (eskiden her dilde Türkçe "dk"/"sa" yazıyordu).
+  const min = t("time.min");
+  const hour = t("time.hour");
+  if (totalMin < 60) return `${totalMin} ${min}`;
   const h = Math.floor(totalMin / 60);
   const m = totalMin % 60;
-  return m > 0 ? `${h} sa ${m} dk` : `${h} sa`;
+  return m > 0 ? `${h} ${hour} ${m} ${min}` : `${h} ${hour}`;
 }
 
 // Sağ üstteki hak rozetine tıklayınca açılan pop-up: reklam izleyerek hak
@@ -635,6 +657,7 @@ function showAllowanceOverlay() {
     allowanceWatchAdBtn.hidden = false;
     allowanceBuyUnlimitedBtn.hidden = false;
   }
+  refreshUnlimitedPriceLabel();
   allowanceOverlay.hidden = false;
 }
 
@@ -1365,7 +1388,10 @@ window.__prizmaDebug = {
   // Görsel testler için: o anki bulmacayı çözer (kör modda ayrıca ateşler).
   solveCurrent: async () => {
     if (!currentPuzzle) return false;
-    const { solution } = await requestSolution(currentPuzzle, null);
+    // Önce üreticinin bulmacayla birlikte sakladığı çözüm (anında, her zaman
+    // var); yoksa sıfırdan arama. Sıfırdan arama Usta'da süre sınırına
+    // takılabiliyordu.
+    const solution = currentPuzzle.solution || (await requestSolution(currentPuzzle, null)).solution;
     if (!solution) return false;
     board.resetMirrors();
     for (const [key, type] of solution) board.applyHintMirror(key, type);
@@ -1374,6 +1400,11 @@ window.__prizmaDebug = {
   },
   gotoOnboarding: (index) => startOnboarding(index),
   gotoCampaign: () => showCampaign(),
+  // Mağaza görselleri için (bkz. tools/store_screenshots.mjs): sayaç gerçekçi
+  // bir süre göstersin diye başlangıç anını geriye çeker.
+  shiftTimer: (ms) => {
+    startTimeMs -= ms;
+  },
   // 60/60 kutlama ekranını doğrudan açar (testte 60 bölüm çözmek pratik değil).
   showCampaignDone: () => showCampaignDone(),
   gotoEndless: (diff) => startEndless(diff),

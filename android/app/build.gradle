@@ -90,8 +90,16 @@ android {
         // 60 bölümlük kampanya bitiş ekranı + toplam süre, "Yolun Sonu"
         // başarımı, günlük bulmaca artık her gün Usta, ana menü sadeleşti.
         // 15'e çekildi; 2.2.
-        versionCode 15
-        versionName "2.2"
+        // versionCode 15 (2.2) üretim kanalına yüklendi (ilk üretim sürümü).
+        // Sonraki sürüm: oyun dili 9'dan 14'e çıktı (Almanca, İtalyanca,
+        // Japonca, Korece, Endonezce eklendi — mağaza sayfası dilleriyle
+        // eşitlendi); satın alma fiyatı artık koda gömülü "39,99 TL" değil,
+        // mağazadan oyuncunun kendi para birimiyle okunuyor; süre birimleri
+        // (dk/sa/sn) ve logo yazımı dile göre; İspanyolca/Fransızca/
+        // Portekizce/Rusçada taşan araç çubuğu metinleri kısaltıldı.
+        // 16'ya çekildi; 2.3.
+        versionCode 16
+        versionName "2.3"
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
         aaptOptions {
              // Files and dirs to omit from the packaged assets dir, modified to accommodate modern web apps.

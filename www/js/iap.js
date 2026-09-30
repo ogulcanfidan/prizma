@@ -1,5 +1,7 @@
-// iap.js — Uygulama içi alım: tek seferlik 39.99 TL ödeme karşılığında
+// iap.js — Uygulama içi alım: tek seferlik ödeme karşılığında
 // GameState.unlimited=true (günlük bulmaca hakkı sınırı tamamen kalkar).
+// Fiyat Play Console'da ülke bazında tanımlıdır (Türkiye: 39,99 TL); arayüzde
+// gösterilen fiyat koda GÖMÜLÜ DEĞİL, mağazadan okunur (bkz. getUnlimitedPrice).
 //
 // cordova-plugin-purchase (Capacitor içinde de çalışır, window.CdvPurchase.store
 // olarak erişilir) kullanır. Web önizlemede / plugin yokken sessizce devre dışı.
@@ -18,7 +20,26 @@
 import { GameState } from "./gamestate.js";
 
 export const UNLIMITED_PRODUCT_ID = "prizma_unlimited";
-export const UNLIMITED_PRICE_LABEL = "39,99 TL";
+
+// Ürünün, oyuncunun KENDİ ülkesindeki para birimiyle biçimlenmiş fiyatı
+// (ör. "₺39,99", "0,99 €", "¥160") — Google Play'in döndürdüğü metin. Mağaza
+// henüz yanıt vermediyse / plugin yoksa null döner; arayüz o durumda fiyatsız
+// "tek seferlik satın alma" metnine düşer.
+// Eskiden arayüzde her dilde sabit "39,99 TL" yazıyordu: Türkiye dışındaki
+// oyuncu TL fiyat görüp kendi para biriminde tahsil ediliyordu.
+export function getUnlimitedPrice() {
+  const store = getStore();
+  if (!store) return null;
+  try {
+    const product = store.get(UNLIMITED_PRODUCT_ID);
+    if (!product) return null;
+    const pricing = product.pricing || (product.getOffer && product.getOffer() && product.getOffer().pricingPhases && product.getOffer().pricingPhases[0]);
+    const price = pricing && pricing.price;
+    return typeof price === "string" && price.trim() ? price.trim() : null;
+  } catch (e) {
+    return null;
+  }
+}
 
 function getStore() {
   return window.CdvPurchase ? window.CdvPurchase.store : null;

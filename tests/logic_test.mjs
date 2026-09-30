@@ -312,5 +312,44 @@ for (const diff of Object.keys(TIER_RANGES)) {
   check("Worker veri aktarımı: kopyalanıp geri kurulan bulmaca aynı davranıyor (4 zorluk)", roundTripOk);
 }
 
+// Çeviri bütünlüğü: her dil, İngilizce ile AYNI anahtarlara ve her metinde
+// AYNI {yer tutuculara} sahip olmalı. Eksik bir anahtar oyunda sessizce
+// Türkçe'ye düşer (bkz. i18n.js → t()), yani gözle fark edilmesi zordur —
+// yeni dil/metin eklerken unutulan çeviriyi burası yakalar.
+// (i18n.js doğrudan import EDİLMEZ: gamestate.js üzerinden tarayıcı
+// API'lerine uzanır; sözlük dosya metninden okunur.)
+{
+  const fs = await import("node:fs");
+  const src = fs.readFileSync(new URL("../www/js/i18n.js", import.meta.url), "utf8").replace(/\r\n/g, "\n");
+  const start = src.indexOf("const STRINGS = {");
+  const end = src.indexOf("\n};\n", start);
+  const STRINGS = new Function(`${src.slice(start, end + 3)}; return STRINGS;`)();
+  const langs = JSON.parse(src.match(/export const SUPPORTED_LANGS = (\[.*?\]);/)[1]);
+  const names = src.slice(src.indexOf("export const LANG_NAMES = {"), src.indexOf("export const RTL_LANGS"));
+  const enKeys = Object.keys(STRINGS.en);
+  const ph = (str) => (String(str).match(/\{[a-z]+\}/g) || []).sort().join(",");
+
+  check(`Oyun 14 dili destekliyor (${langs.length})`, langs.length === 14);
+  check("Desteklenen her dilin sözlüğü ve ayarlarda görünen adı var", langs.every((l) => STRINGS[l] && new RegExp(`\\b${l}: "`).test(names)));
+  check("Sözlükte, dil listesinde olmayan fazladan dil yok", Object.keys(STRINGS).every((l) => langs.includes(l)));
+
+  const problems = [];
+  for (const lang of langs) {
+    const dict = STRINGS[lang] || {};
+    for (const k of enKeys) {
+      if (!(k in dict)) problems.push(`${lang}: "${k}" eksik`);
+      else if (typeof dict[k] !== "string" || !dict[k].trim()) problems.push(`${lang}: "${k}" boş`);
+      else if (ph(dict[k]) !== ph(STRINGS.en[k])) problems.push(`${lang}: "${k}" yer tutucuları farklı (${ph(dict[k])} ≠ ${ph(STRINGS.en[k])})`);
+    }
+    for (const k of Object.keys(dict)) if (!(k in STRINGS.en)) problems.push(`${lang}: "${k}" İngilizcede yok`);
+  }
+  if (problems.length) console.log(problems.slice(0, 20).join("\n"));
+  check(`Tüm dillerde ${enKeys.length} metnin tamamı çevrili, yer tutucular tutarlı (${problems.length} sorun)`, problems.length === 0);
+
+  // Fiyat arayüze gömülü olmamalı — mağazadan okunur (bkz. iap.js → getUnlimitedPrice).
+  const hardcoded = langs.filter((l) => Object.values(STRINGS[l]).some((v) => /\d+[.,]\d{2}\s*TL/.test(v)));
+  check(`Hiçbir dilde sabit TL fiyatı yazmıyor (${hardcoded.join(",") || "yok"})`, hardcoded.length === 0);
+}
+
 console.log(failures === 0 ? "\nTÜM TESTLER GEÇTİ" : `\n${failures} TEST BAŞARISIZ`);
 process.exit(failures === 0 ? 0 : 1);
